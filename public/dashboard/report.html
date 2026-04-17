@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYA Test Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+<style>
+:root{--pass:#10b981;--fail:#ef4444;--warn:#f59e0b;--bg:#f0f2f5;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--shadow:0 1px 4px rgba(0,0,0,.07);--radius:12px;--accent:#6366f1}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+.hdr{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:18px 40px 0}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding-bottom:14px}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.back-btn{color:#94a3b8;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid #334155;transition:.15s;cursor:pointer}
+.back-btn:hover{background:#1e293b;color:#e2e8f0}
+.hdr-title{font-size:18px;font-weight:800}
+.hdr-sub{font-size:11px;color:#94a3b8;margin-top:1px}
+.env-chip{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.chip-stg{background:rgba(59,130,246,.2);color:#93c5fd}
+.chip-prd{background:rgba(34,197,94,.2);color:#86efac}
+.chip-ios{background:rgba(148,163,184,.15);color:#94a3b8}
+.chip-and{background:rgba(74,222,128,.1);color:#86efac}
+.overall-badge{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
+.badge-pass{background:rgba(16,185,129,.15);color:#6ee7b7}
+.badge-fail{background:rgba(239,68,68,.15);color:#fca5a5}
+.badge-loading{background:rgba(148,163,184,.15);color:#94a3b8}
+.user-bar{display:flex;align-items:center;gap:12px}
+.user-bar .name{font-size:12px;color:#94a3b8}
+.logout-btn{padding:4px 10px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:11px;cursor:pointer}
+.logout-btn:hover{border-color:#ef4444;color:#fca5a5}
+.tabs{display:flex;gap:0;border-top:1px solid #1e3a5f;margin-top:4px}
+.tab{padding:11px 20px;font-size:13px;font-weight:600;color:#94a3b8;cursor:pointer;border-bottom:3px solid transparent;transition:.15s;white-space:nowrap}
+.tab:hover{color:#e2e8f0}.tab.active{color:#fff;border-bottom-color:#6366f1}
+.tab-count{margin-left:5px;background:#334155;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700}
+.ctrl-bar{background:#1e293b;padding:11px 40px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid #334155}
+.ctrl-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.ctrl-wrap{position:relative}
+.ctrl-select{appearance:none;background:#0f172a;color:#e2e8f0;border:1px solid #475569;border-radius:7px;padding:7px 30px 7px 12px;font-size:13px;font-weight:600;cursor:pointer;outline:none;min-width:200px}
+.ctrl-select:focus,.ctrl-select:hover{border-color:#6366f1}
+.ctrl-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#64748b;pointer-events:none;font-size:12px}
+.ctrl-date{background:#0f172a;color:#e2e8f0;border:1px solid #475569;border-radius:7px;padding:7px 12px;font-size:13px;outline:none;cursor:pointer}
+.ctrl-date:focus,.ctrl-date:hover{border-color:#6366f1}
+.ctrl-btn{padding:7px 12px;border-radius:7px;border:1px solid #475569;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;transition:.15s}
+.ctrl-btn:hover{background:#334155;color:#e2e8f0}
+.ctrl-btn.primary{border-color:#6366f1;color:#a5b4fc}
+.ctrl-btn.primary:hover{background:#6366f1;color:#fff}
+.ctrl-meta{font-size:11px;color:#475569;white-space:nowrap}
+.new-banner{background:#6366f1;color:#fff;padding:8px 40px;font-size:13px;font-weight:600;display:none;align-items:center;gap:12px}
+.new-banner button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+.container{max-width:1440px;margin:0 auto;padding:22px 40px 60px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);border-left:4px solid #3b82f6}
+.stat.s-pass{border-left-color:var(--pass)}.stat.s-fail{border-left-color:var(--fail)}
+.stat.s-slow{border-left-color:#f97316}.stat.s-rate{border-left-color:var(--warn)}.stat.s-nr{border-left-color:#94a3b8}
+.stat .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.stat .num{font-size:28px;font-weight:800;letter-spacing:-1px;margin:2px 0}
+.stat .info{font-size:11px;color:var(--muted)}
+.ng{color:var(--pass)}.nr{color:var(--fail)}.nb{color:#3b82f6}.no{color:#f97316}.nm{color:#94a3b8}
+.charts{display:grid;grid-template-columns:320px 1fr;gap:14px;margin-bottom:20px}
+.chart-box{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.chart-box h3{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.chart-area{position:relative;height:280px}
+.chart-full{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:20px}
+.chart-full h3{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.chart-area-tall{position:relative;height:260px}
+.cat-block{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:16px}
+.cat-header{padding:13px 18px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.cat-header:hover{background:#f1f5f9}
+.cat-name{font-size:13px;font-weight:700}
+.cat-right{display:flex;align-items:center;gap:12px}
+.cat-mini{font-size:11px;color:var(--muted)}.cat-mini strong{color:var(--text)}
+.cat-bar-wrap{display:flex;align-items:center;gap:7px}
+.cat-bar{width:70px;height:4px;background:#fee2e2;border-radius:2px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:2px}
+.cat-pct{font-size:12px;font-weight:700}
+.cat-chevron{font-size:11px;color:var(--muted);transition:.2s}.cat-chevron.open{transform:rotate(180deg)}
+.cat-body{display:none}.cat-body.open{display:block}
+.nr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#f1f5f9;color:#64748b;margin-left:6px}
+.sc-table{width:100%;border-collapse:collapse}
+.sc-table th{padding:8px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;background:#f8fafc;border-bottom:2px solid var(--border)}
+.sc-table td{padding:10px 16px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.sc-table tr:last-child td{border-bottom:none}
+.sc-table .sc-row:hover{background:#fafbfc}
+.sc-table .fail-row{background:#fef2f2}
+.sc-table .fail-row td{padding:5px 16px 5px 32px;font-size:11px;border-bottom:1px solid #fee2e2;color:#991b1b}
+.fail-sn{font-weight:600;color:#dc2626;margin-right:4px}
+.badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:700}
+.badge-pass{background:#ecfdf5;color:#059669}.badge-fail{background:#fef2f2;color:#dc2626}
+.sc-id{font-size:11px;color:#94a3b8;font-weight:600;font-family:monospace}
+.bar-wrap{display:flex;align-items:center;gap:6px}
+.bar{width:60px;height:4px;background:#fee2e2;border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px}
+.bar-pct{font-size:11px;font-weight:700}
+.fc{color:var(--fail);font-weight:700}.sc{color:#f97316;font-weight:700}
+.time-pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:#fef2f2;color:#dc2626}
+.day-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:20px}
+.day-table th{padding:9px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;background:#f8fafc;border-bottom:2px solid var(--border)}
+.day-table td{padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+.day-table tr:last-child td{border-bottom:none}
+.day-table tr:hover td{background:#fafbfc}
+.prog-dots{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.prog-dot{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.ph{background:#ecfdf5;color:#059669}.pm{background:#fef9c3;color:#854d0e}.pl{background:#fef2f2;color:#dc2626}
+.du{color:#059669;font-weight:700}.dd{color:#dc2626;font-weight:700}.dz{color:#94a3b8}
+.state-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;gap:10px;color:var(--muted);background:var(--card);border-radius:var(--radius);border:1px solid var(--border)}
+.state-screen .icon{font-size:38px}
+.state-screen h2{font-size:16px;font-weight:700;color:var(--text)}
+.state-screen p{font-size:13px;max-width:360px;text-align:center}
+.spinner{width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.charts{grid-template-columns:1fr}}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.container{padding:14px}.hdr,.ctrl-bar{padding:14px 16px}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="hdr-left">
+      <span class="back-btn" onclick="goHome()">&#8249; Environments</span>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="hdr-title" id="hdrTitle">Loading...</div>
+          <span class="env-chip" id="envChip"></span>
+          <span class="env-chip" id="pltChip"></span>
+        </div>
+        <div class="hdr-sub" id="hdrMeta"></div>
+        <div class="hdr-sub" id="hdrNotes" style="display:none;margin-top:3px;color:#a5b4fc;font-style:italic"></div>
+      </div>
+    </div>
+    <div class="user-bar">
+      <span class="name" id="userNameBar"></span>
+      <div class="overall-badge badge-loading" id="overallBadge">Loading...</div>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('build')" id="tab-build">Build Details <span class="tab-count" id="tc-build">--</span></div>
+    <div class="tab" onclick="switchTab('daily')" id="tab-daily">Daily Trend <span class="tab-count" id="tc-daily">--</span></div>
+  </div>
+</div>
+
+<div class="new-banner" id="newBanner">New build available! <button onclick="reloadLatest()">Load it</button> <button onclick="document.getElementById('newBanner').style.display='none'">Dismiss</button></div>
+
+<div class="ctrl-bar" id="ctrlBar">
+  <div id="ctrl-build" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
+    <span class="ctrl-label">Env</span>
+    <div class="ctrl-wrap"><select class="ctrl-select" id="envSelect" onchange="switchEnvPlatform()" style="min-width:130px"><option value="staging">Staging</option><option value="production">Production</option></select></div>
+    <span class="ctrl-label">Platform</span>
+    <div class="ctrl-wrap"><select class="ctrl-select" id="pltSelect" onchange="switchEnvPlatform()" style="min-width:110px"><option value="ios">iOS</option><option value="android">Android</option></select></div>
+    <div style="width:1px;height:22px;background:#334155;margin:0 2px"></div>
+    <span class="ctrl-label">Build</span>
+    <div class="ctrl-wrap"><select class="ctrl-select" id="versionSelect" onchange="loadVersion(this.value)" style="min-width:190px"><option>Loading...</option></select></div>
+    <div class="ctrl-meta" id="buildMeta"></div>
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <button class="ctrl-btn primary" onclick="exportXLSX()" title="Export Excel">&#8595; Excel</button>
+      <button class="ctrl-btn" onclick="exportCSV()" title="Export CSV">&#8595; CSV</button>
+      <button class="ctrl-btn" onclick="init()">&#8635;</button>
+    </div>
+  </div>
+  <div id="ctrl-daily" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
+    <span class="ctrl-label">Env</span>
+    <div class="ctrl-wrap"><select class="ctrl-select" id="envSelect2" onchange="switchEnvPlatform()" style="min-width:130px"><option value="staging">Staging</option><option value="production">Production</option></select></div>
+    <span class="ctrl-label">Platform</span>
+    <div class="ctrl-wrap"><select class="ctrl-select" id="pltSelect2" onchange="switchEnvPlatform()" style="min-width:110px"><option value="ios">iOS</option><option value="android">Android</option></select></div>
+    <div style="width:1px;height:22px;background:#334155;margin:0 2px"></div>
+    <span class="ctrl-label">From</span>
+    <input type="date" class="ctrl-date" id="dateFrom" onchange="loadDaily()">
+    <span class="ctrl-label">To</span>
+    <input type="date" class="ctrl-date" id="dateTo" onchange="loadDaily()">
+    <button class="ctrl-btn" onclick="clearDateFilter()">Clear</button>
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <button class="ctrl-btn primary" onclick="exportRangeXLSX()">&#8595; Excel</button>
+      <button class="ctrl-btn" onclick="exportRangeCSV()">&#8595; CSV</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="pane-build">
+    <div class="stats">
+      <div class="stat"><div class="lbl">Scenarios Run</div><div class="num nb" id="xTotal">--</div><div class="info" id="xTotalInfo">--</div></div>
+      <div class="stat s-pass"><div class="lbl">Passed</div><div class="num ng" id="xPass">--</div><div class="info" id="xPassInfo">--</div></div>
+      <div class="stat s-fail"><div class="lbl">Failed</div><div class="num nr" id="xFail">--</div><div class="info" id="xFailInfo">--</div></div>
+      <div class="stat s-slow"><div class="lbl">Slow Steps >4s</div><div class="num no" id="xSlow">--</div><div class="info">Steps over 4 seconds</div></div>
+      <div class="stat s-rate"><div class="lbl">Pass Rate</div><div class="num" id="xRate">--</div><div class="info" id="xRateInfo">--</div></div>
+      <div class="stat s-nr"><div class="lbl">Not Run</div><div class="num nm" id="xNotRun">--</div><div class="info" id="xNotRunInfo">this session</div></div>
+    </div>
+    <div class="charts">
+      <div class="chart-box"><h3>Pass vs Fail</h3><div class="chart-area"><canvas id="donutChart"></canvas></div></div>
+      <div class="chart-box"><h3>Pass Rate by Category</h3><div class="chart-area"><canvas id="catChart"></canvas></div></div>
+    </div>
+    <div id="categoryBlocks"><div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div></div>
+  </div>
+  <div id="pane-daily" style="display:none">
+    <div class="chart-full"><h3>End-of-Day Pass Rate - Daily Trend</h3><div class="chart-area-tall"><canvas id="trendChart"></canvas></div></div>
+    <div id="dayTable"><div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div></div>
+  </div>
+</div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const TOKEN = localStorage.getItem('vya_token');
+const USER = JSON.parse(localStorage.getItem('vya_user') || 'null');
+if (!TOKEN || !USER) { window.location.href = '/'; }
+document.getElementById('userNameBar').textContent = USER?.name || '';
+
+function logout() {
+  localStorage.removeItem('vya_token'); localStorage.removeItem('vya_user'); window.location.href = '/';
+}
+
+function goHome() {
+  window.location.href = '/dashboard/';
+}
+
+// ── Config ───────────────────────────────────────────────────────────────────
+const params   = new URLSearchParams(location.search);
+let ENV      = params.get('env') || 'staging';
+let PLATFORM = params.get('platform') || 'ios';
+const BASE_API = `/api/dashboard`;
+
+// Scenario counts from DB (loaded dynamically)
+let TOTAL_SCENARIOS = PLATFORM === 'ios' ? 110 : 71;
+
+document.title = `${ENV === 'staging' ? 'Staging' : 'Production'} · ${PLATFORM.toUpperCase()} · VYA`;
+document.getElementById('hdrTitle').textContent = `${ENV === 'staging' ? 'Staging' : 'Production'} · ${PLATFORM === 'ios' ? 'iOS' : 'Android'}`;
+const envChip = document.getElementById('envChip');
+envChip.textContent = ENV === 'staging' ? 'STAGE' : 'PROD';
+envChip.className = 'env-chip ' + (ENV === 'staging' ? 'chip-stg' : 'chip-prd');
+const pltChip = document.getElementById('pltChip');
+pltChip.textContent = PLATFORM.toUpperCase();
+pltChip.className = 'env-chip ' + (PLATFORM === 'ios' ? 'chip-ios' : 'chip-and');
+
+let donutChart=null,catChart=null,trendChart=null;
+let allVersions=[],latestKnownVersion=null;
+
+// ── API helper with auth ─────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(BASE_API + path, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (r.status === 401) { logout(); return; }
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── Util ─────────────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function shortStep(n){const m=n.match(/@(?:name|label|accessibilityLabel|value|id)='([^']+)'/);return m?m[1]:(n.length>80?n.slice(0,80)+'...':n)}
+function fmtDate(iso){try{return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}catch(e){return iso||''}}
+function fmtTime(iso){try{return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
+function pc(r){return r>=90?'var(--pass)':r>=70?'var(--warn)':'var(--fail)'}
+function dotCls(r){return r>=90?'prog-dot ph':r>=70?'prog-dot pm':'prog-dot pl'}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+let currentTab='build';
+function switchTab(t){
+  currentTab=t;
+  ['build','daily'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('active',x===t);
+    document.getElementById('pane-'+x).style.display=x===t?'block':'none';
+    document.getElementById('ctrl-'+x).style.display=x===t?'flex':'none';
+  });
+  if(t==='daily'&&!document.querySelector('#dayTable table'))loadDaily();
+}
+
+function switchEnvPlatform(){
+  const env = (document.getElementById('envSelect')||document.getElementById('envSelect2')).value;
+  const plt = (document.getElementById('pltSelect')||document.getElementById('pltSelect2')).value;
+  const url = new URL(location.href);
+  url.searchParams.set('env', env);
+  url.searchParams.set('platform', plt);
+  location.href = url.toString();
+}
+
+function syncSelectors(){
+  ['envSelect','envSelect2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=ENV});
+  ['pltSelect','pltSelect2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=PLATFORM});
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init(){
+  try{
+    // Load total scenarios from DB
+    try {
+      const scenData = await api(`/${ENV}/${PLATFORM}/scenarios`);
+      if (scenData.totalActive) TOTAL_SCENARIOS = scenData.totalActive;
+    } catch(e) {}
+
+    const vRes=await api(`/${ENV}/${PLATFORM}/versions`);
+    allVersions=vRes.versions||[];
+    populateSelect(allVersions);
+    syncSelectors();
+    if(allVersions.length){
+      latestKnownVersion=allVersions[0].version;
+      await loadVersion(allVersions[0].version);
+      document.getElementById('tc-daily').textContent=new Set(allVersions.map(v=>v.runDate)).size||'0';
+      if(allVersions.length){
+        const dates=allVersions.map(v=> typeof v.runDate === 'string' ? v.runDate.slice(0,10) : new Date(v.runDate).toISOString().slice(0,10)).sort();
+        document.getElementById('dateFrom').value=dates[0];
+        document.getElementById('dateTo').value=dates[dates.length-1];
+      }
+    } else showEmpty();
+  }catch(e){showError(e.message)}
+}
+
+function populateSelect(versions){
+  const sel=document.getElementById('versionSelect');
+  sel.innerHTML='';
+  versions.forEach((v,i)=>{
+    sel.add(new Option(`${v.label}${i===0?' (latest)':''}`,v.version));
+  });
+}
+
+async function loadVersion(version){
+  if(!version)return;
+  document.getElementById('categoryBlocks').innerHTML='<div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div>';
+  document.getElementById('overallBadge').className='overall-badge badge-loading';
+  document.getElementById('overallBadge').textContent='Loading...';
+  try{
+    const d=await api(`/${ENV}/${PLATFORM}/report/`+encodeURIComponent(version));
+    renderBuild(d.report,d.byCategory,version);
+  }catch(e){showError(e.message)}
+}
+
+function renderBuild(R,byCategory,version){
+  const allSubs=R.flatMap(r=>r.subScenarios||[]);
+  const total=allSubs.length;
+  const passed=allSubs.filter(s=>s.overall==='Passed').length;
+  const failed=allSubs.filter(s=>s.overall==='Failed').length;
+  const slowSteps=R.reduce((a,r)=>a+(r.slowSteps||0),0);
+  const totalStp=R.reduce((a,r)=>a+(r.totalSteps||0),0);
+  const passedStp=R.reduce((a,r)=>a+(r.passedSteps||0),0);
+  const rate=total>0?((passed/total)*100).toFixed(1):0;
+  const notRun=Math.max(0,TOTAL_SCENARIOS-total);
+
+  const vMeta=allVersions.find(v=>v.version===version)||{};
+  const labelText = vMeta.label && vMeta.label !== version ? ` · ${vMeta.label}` : '';
+  document.getElementById('hdrMeta').textContent=(R[0]?.runStarted||'')+labelText+(vMeta.savedAt?' · Saved '+fmtDate(vMeta.savedAt)+' '+fmtTime(vMeta.savedAt):'');
+  const notesEl=document.getElementById('hdrNotes');
+  if(vMeta.notes){notesEl.textContent='Notes: '+vMeta.notes;notesEl.style.display='block';}else{notesEl.style.display='none';}
+  const ob=document.getElementById('overallBadge');
+  ob.className='overall-badge '+(failed>0?'badge-fail':'badge-pass');
+  ob.textContent=failed>0?'Overall: Failed':'Overall: Passed';
+  document.getElementById('buildMeta').textContent=vMeta.savedAt?`${fmtDate(vMeta.savedAt)} ${fmtTime(vMeta.savedAt)}`:'';
+  document.getElementById('xTotal').textContent=total;
+  document.getElementById('xTotalInfo').textContent=`${totalStp} steps · ${R.length} file(s)`;
+  document.getElementById('xPass').textContent=passed;
+  document.getElementById('xPassInfo').textContent=`${passedStp} steps passed`;
+  document.getElementById('xFail').textContent=failed;
+  document.getElementById('xFailInfo').textContent=`${totalStp-passedStp} steps failed`;
+  document.getElementById('xSlow').textContent=slowSteps;
+  const rEl=document.getElementById('xRate');
+  rEl.textContent=rate+'%';rEl.style.color=pc(rate);
+  document.getElementById('xRateInfo').textContent=`${passed} of ${total} scenarios`;
+  document.getElementById('xNotRun').textContent=notRun;
+  document.getElementById('xNotRunInfo').textContent=`of ${TOTAL_SCENARIOS} total`;
+  document.getElementById('tc-build').textContent=total;
+  renderDonut(passed,failed);
+  renderCatChart(byCategory);
+  renderCategories(byCategory,R);
+}
+
+function renderDonut(p,f){
+  if(donutChart){donutChart.destroy();donutChart=null}
+  donutChart=new Chart(document.getElementById('donutChart'),{
+    type:'doughnut',data:{labels:['Passed','Failed'],datasets:[{data:[p,f],backgroundColor:['#10b981','#ef4444'],borderWidth:0,hoverOffset:8}]},
+    options:{cutout:'65%',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:12,weight:'bold'}}}}}
+  });
+}
+function renderCatChart(byCategory){
+  if(catChart){catChart.destroy();catChart=null}
+  const cats=byCategory.filter(c=>c.run>0).sort((a,b)=>a.categoryId-b.categoryId);
+  const h=Math.max(260,cats.length*32+60);
+  document.querySelector('.chart-area').style.height=h+'px';
+  catChart=new Chart(document.getElementById('catChart'),{
+    type:'bar',data:{labels:cats.map(c=>c.categoryName.length>24?c.categoryName.slice(0,24)+'...':c.categoryName),
+      datasets:[{label:'Pass Rate %',data:cats.map(c=>c.passRate||0),backgroundColor:cats.map(c=>c.passRate>=90?'#10b981':c.passRate>=70?'#f59e0b':'#ef4444'),borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw.toFixed(1)+'%'}}},
+      scales:{x:{min:0,max:100,grid:{color:'#f1f5f9'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}}}
+  });
+}
+function renderTrend(days){
+  if(trendChart){trendChart.destroy();trendChart=null}
+  const sorted=[...days].sort((a,b)=>a.date.localeCompare(b.date));
+  trendChart=new Chart(document.getElementById('trendChart'),{
+    type:'line',data:{labels:sorted.map(d=>d.date),datasets:[{
+      label:'End-of-Day Pass Rate %',data:sorted.map(d=>d.endOfDay.passRate),
+      borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.08)',
+      pointBackgroundColor:sorted.map(d=>pc(d.endOfDay.passRate)),
+      pointRadius:5,fill:true,tension:.35,borderWidth:2.5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'%'}}},
+      scales:{y:{min:0,max:100,grid:{color:'#f1f5f9'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false},ticks:{maxRotation:45}}}}
+  });
+}
+
+function renderCategories(byCategory,R){
+  const sorted=[...byCategory].sort((a,b)=>{if(a.categoryId===0)return 1;if(b.categoryId===0)return-1;return a.categoryId-b.categoryId});
+  let html='<div>';
+  for(const cat of sorted){
+    const pct=cat.passRate!==null?cat.passRate:0;
+    const uid='cat-'+cat.categoryId;
+    const label=cat.categoryId>0?`${cat.categoryId}. ${cat.categoryName}`:cat.categoryName;
+    const notRunCount=cat.notRun||0;
+    html+=`<div class="cat-block">
+      <div class="cat-header" onclick="toggleCat('${uid}')">
+        <span class="cat-name">${esc(label)}${notRunCount>0?`<span class="nr-badge">${notRunCount} not run</span>`:''}</span>
+        <div class="cat-right">
+          <span class="cat-mini"><strong>${cat.passed}</strong> passed &nbsp;<strong style="color:${cat.failed>0?'var(--fail)':'var(--muted)'}">${cat.failed}</strong> failed &nbsp;<strong style="color:var(--muted)">${cat.run}</strong>/${cat.masterTotal} run</span>
+          <div class="cat-bar-wrap"><div class="cat-bar">${cat.run>0?`<div class="cat-bar-fill" style="width:${pct}%;background:${pc(pct)}"></div>`:''}</div>
+            <span class="cat-pct" style="color:${cat.run>0?pc(pct):'var(--muted)'}">${cat.run>0?pct+'%':'--'}</span></div>
+          <span class="cat-chevron" id="chev-${uid}">&#9662;</span></div></div>
+      <div class="cat-body" id="${uid}">
+        <table class="sc-table"><thead><tr><th style="width:50px">ID</th><th>Scenario</th><th style="width:60px">Steps</th><th style="width:60px">Failed</th><th style="width:60px">Slow</th><th style="width:110px">Pass Rate</th><th style="width:80px">Result</th></tr></thead><tbody>`;
+    for(const sub of cat.subScenarios||[]){
+      const sPct=sub.totalSteps>0?((sub.passedSteps/sub.totalSteps)*100).toFixed(1):100;
+      const cls=sub.overall==='Passed'?'badge-pass':'badge-fail';
+      html+=`<tr class="sc-row"><td><span class="sc-id">${esc(sub.scenarioId||'--')}</span></td><td>${esc(sub.name)}</td><td>${sub.totalSteps}</td>
+        <td class="${sub.failedSteps>0?'fc':''}">${sub.failedSteps>0?sub.failedSteps:'--'}</td>
+        <td class="${sub.slowSteps>0?'sc':''}">${sub.slowSteps>0?sub.slowSteps:'--'}</td>
+        <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:${sPct}%;background:${pc(sPct)}"></div></div><span class="bar-pct">${sPct}%</span></div></td>
+        <td><span class="badge ${cls}">${sub.overall}</span></td></tr>`;
+      (sub.failed||[]).forEach(f=>{
+        html+=`<tr class="fail-row"><td></td><td colspan="4"><span class="fail-sn">Step ${f.step}:</span>${esc(shortStep(f.name))}</td>
+          <td><span class="time-pill">${f.time.toFixed(1)}s</span></td><td><span class="badge badge-fail">Failed</span></td></tr>`;
+      });
+    }
+    html+=`</tbody></table></div></div>`;
+  }
+  html+='</div>';
+  document.getElementById('categoryBlocks').innerHTML=html;
+  sorted.filter(c=>c.run>0).slice(0,3).forEach(c=>toggleCat('cat-'+c.categoryId,true));
+}
+
+function toggleCat(uid,forceOpen){
+  const body=document.getElementById(uid);const chev=document.getElementById('chev-'+uid);
+  if(!body)return;
+  const open=forceOpen!==undefined?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',open);if(chev)chev.classList.toggle('open',open);
+}
+
+async function loadDaily(){
+  document.getElementById('dayTable').innerHTML='<div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div>';
+  const from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value;
+  let url=`/${ENV}/${PLATFORM}/daily`;
+  const p=[];if(from)p.push('from='+from);if(to)p.push('to='+to);
+  if(p.length)url+='?'+p.join('&');
+  try{
+    const d=await api(url);
+    document.getElementById('tc-daily').textContent=d.total||'0';
+    if(!d.days||!d.days.length){document.getElementById('dayTable').innerHTML='<div class="state-screen"><div class="icon">&#128197;</div><h2>No data for this range</h2></div>';return}
+    renderTrend(d.days);
+    let html=`<table class="day-table"><thead><tr><th>Date</th><th>Builds</th><th>End-of-Day</th><th>Passed</th><th>Failed</th><th>Improvement</th><th>Progression</th></tr></thead><tbody>`;
+    for(const d2 of d.days){
+      const eod=d2.endOfDay;
+      const imp=d2.improvement;
+      const impStr=imp===null?'--':imp>0?`<span class="du">+${imp}%</span>`:imp<0?`<span class="dd">${imp}%</span>`:`<span class="dz">--</span>`;
+      const dots=d2.progression.map(p=>`<span class="${dotCls(p.passRate)}" title="${p.version}">${p.passRate}%</span>`).join('&#8594;');
+      html+=`<tr><td><strong>${d2.date}</strong></td><td>${d2.buildCount}</td>
+        <td><span style="font-size:17px;font-weight:700;color:${pc(eod.passRate)}">${eod.passRate}%</span></td>
+        <td style="color:var(--pass);font-weight:600">${eod.passed}</td>
+        <td style="color:${eod.failed>0?'var(--fail)':'var(--muted)'};font-weight:600">${eod.failed}</td>
+        <td>${impStr}</td><td><div class="prog-dots">${dots}</div></td></tr>`;
+    }
+    html+='</tbody></table>';
+    document.getElementById('dayTable').innerHTML=html;
+  }catch(e){document.getElementById('dayTable').innerHTML=`<div class="state-screen"><div class="icon">&#9888;</div><h2>${esc(e.message)}</h2></div>`}
+}
+function clearDateFilter(){document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';loadDaily()}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportDownload(url) {
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = url.split('/').pop().split('?')[0];
+      a.click();
+    });
+}
+
+function exportXLSX(){const v=document.getElementById('versionSelect').value;if(v)exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(v)}/xlsx`)}
+function exportCSV(){const v=document.getElementById('versionSelect').value;if(v)exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(v)}/csv`)}
+function exportRangeXLSX(){
+  const from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value;
+  let url=`/api/export/${ENV}/${PLATFORM}/range/xlsx`;const p=[];if(from)p.push('from='+from);if(to)p.push('to='+to);
+  if(p.length)url+='?'+p.join('&');exportDownload(url);
+}
+function exportRangeCSV(){
+  const from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value;
+  let url=`/api/export/${ENV}/${PLATFORM}/range/csv`;const p=[];if(from)p.push('from='+from);if(to)p.push('to='+to);
+  if(p.length)url+='?'+p.join('&');exportDownload(url);
+}
+
+// ── Socket.io real-time ──────────────────────────────────────────────────────
+try {
+  const socket = io();
+  socket.on('new-report', data => {
+    if (data.env === ENV && data.platform === PLATFORM) {
+      document.getElementById('newBanner').style.display = 'flex';
+      latestKnownVersion = data.version;
+    }
+  });
+  socket.on('report-deleted', data => {
+    if (data.env === ENV && data.platform === PLATFORM) init();
+  });
+  socket.on('alert', data => {
+    // Show alert as banner briefly
+    const banner = document.getElementById('newBanner');
+    banner.innerHTML = `ALERT: ${data.message} <button onclick="this.parentElement.style.display='none'">Dismiss</button>`;
+    banner.style.display = 'flex';
+    banner.style.background = '#dc2626';
+  });
+} catch(e) {}
+
+async function reloadLatest(){document.getElementById('newBanner').style.display='none';await init()}
+
+// ── Empty/Error ──────────────────────────────────────────────────────────────
+function showEmpty(){
+  document.getElementById('overallBadge').textContent='No Reports';
+  document.getElementById('overallBadge').className='overall-badge badge-loading';
+  document.getElementById('hdrMeta').textContent='No reports saved yet for this environment';
+  document.getElementById('categoryBlocks').innerHTML=`<div class="state-screen"><div class="icon">&#128194;</div><h2>No reports yet</h2>
+    <p>Ask your admin to upload a report for ${ENV} / ${PLATFORM}</p></div>`;
+}
+function showError(msg){
+  document.getElementById('categoryBlocks').innerHTML=`<div class="state-screen"><div class="icon">&#9888;</div><h2>Failed to load</h2><p>${esc(msg)}</p></div>`;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "version": "v7.1",
+  "label": "v7.1",
+  "env": "staging",
+  "platform": "android",
+  "savedAt": "2026-04-17T08:27:52.839Z",
+  "runDate": "2026-04-17",
+  "totalSteps": 1000,
+  "passed": 328,
+  "failed": 672,
+  "scenarios": 2,
+  "passRate": 32.8,
+  "notes": ""
+}

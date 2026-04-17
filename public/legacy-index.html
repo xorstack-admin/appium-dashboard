@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYA Automation Dashboard</title>
+<style>
+:root{--bg:#f0f2f5;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--shadow:0 1px 4px rgba(0,0,0,.07);--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo-area{text-align:center;margin-bottom:40px}
+.logo-area h1{font-size:26px;font-weight:800;letter-spacing:-.5px;color:#0f172a}
+.logo-area p{font-size:14px;color:var(--muted);margin-top:6px}
+.vya-badge{display:inline-flex;align-items:center;gap:6px;background:#0f172a;color:#fff;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.5px;margin-bottom:12px}
+
+.env-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:760px}
+
+.env-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;transition:.2s}
+.env-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-2px)}
+
+.env-header{padding:22px 24px 16px;border-bottom:1px solid var(--border)}
+.env-header-row{display:flex;justify-content:space-between;align-items:flex-start}
+.env-name{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.env-tag{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.tag-stg{background:#dbeafe;color:#1e40af}
+.tag-prd{background:#dcfce7;color:#166534}
+.env-desc{font-size:12px;color:var(--muted);margin-top:4px}
+.env-stat-row{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap}
+.env-stat{font-size:12px;color:var(--muted)}
+.env-stat strong{color:var(--text);font-weight:700}
+
+.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.platform-btn{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-decoration:none;color:var(--text);border-top:1px solid var(--border);transition:.15s}
+.platform-btn:first-child{border-right:1px solid var(--border)}
+.platform-btn:hover{background:#f8fafc}
+.plt-left{display:flex;align-items:center;gap:10px}
+.plt-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.plt-icon-ios{background:#E6F1FB}
+.plt-icon-and{background:#EAF3DE}
+.plt-name{font-size:13px;font-weight:700}
+.plt-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.plt-rate{font-size:20px;font-weight:800}
+.rate-pass{color:#16a34a}.rate-fail{color:#dc2626}.rate-none{color:#94a3b8}
+.plt-arrow{font-size:14px;color:var(--muted);margin-left:8px}
+
+.footer{margin-top:32px;font-size:12px;color:var(--muted);text-align:center}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:600px){.env-grid{grid-template-columns:1fr}.platform-grid{grid-template-columns:1fr}.platform-btn:first-child{border-right:none}}
+</style>
+</head>
+<body>
+<div class="logo-area">
+  <div class="vya-badge">VYA</div>
+  <h1>Automation Dashboard</h1>
+  <p>Select an environment and platform to view test reports</p>
+</div>
+
+<div class="env-grid" id="envGrid">
+  <div class="env-card">
+    <div class="env-header">
+      <div class="env-header-row">
+        <div class="env-name">Staging</div>
+        <span class="env-tag tag-stg">STAGE</span>
+      </div>
+      <div class="env-desc">Pre-release branch testing — run before each deployment</div>
+      <div class="env-stat-row" id="stg-stats"><span class="env-stat"><span class="spinner"></span></span></div>
+    </div>
+    <div class="platform-grid">
+      <a class="platform-btn" href="dashboard.html?env=staging&platform=ios" id="stg-ios">
+        <div class="plt-left">
+          <div class="plt-icon plt-icon-ios">📱</div>
+          <div><div class="plt-name">iOS</div><div class="plt-meta" id="stg-ios-meta">Loading…</div></div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="plt-rate rate-none" id="stg-ios-rate">—</span>
+          <span class="plt-arrow">›</span>
+        </div>
+      </a>
+      <a class="platform-btn" href="dashboard.html?env=staging&platform=android" id="stg-and">
+        <div class="plt-left">
+          <div class="plt-icon plt-icon-and">🤖</div>
+          <div><div class="plt-name">Android</div><div class="plt-meta" id="stg-and-meta">Loading…</div></div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="plt-rate rate-none" id="stg-and-rate">—</span>
+          <span class="plt-arrow">›</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="env-card">
+    <div class="env-header">
+      <div class="env-header-row">
+        <div class="env-name">Production</div>
+        <span class="env-tag tag-prd">PROD</span>
+      </div>
+      <div class="env-desc">Live environment testing — full regression after each release</div>
+      <div class="env-stat-row" id="prd-stats"><span class="env-stat"><span class="spinner"></span></span></div>
+    </div>
+    <div class="platform-grid">
+      <a class="platform-btn" href="dashboard.html?env=production&platform=ios" id="prd-ios">
+        <div class="plt-left">
+          <div class="plt-icon plt-icon-ios">📱</div>
+          <div><div class="plt-name">iOS</div><div class="plt-meta" id="prd-ios-meta">Loading…</div></div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="plt-rate rate-none" id="prd-ios-rate">—</span>
+          <span class="plt-arrow">›</span>
+        </div>
+      </a>
+      <a class="platform-btn" href="dashboard.html?env=production&platform=android" id="prd-and">
+        <div class="plt-left">
+          <div class="plt-icon plt-icon-and">🤖</div>
+          <div><div class="plt-name">Android</div><div class="plt-meta" id="prd-and-meta">Loading…</div></div>
+        </div>
+        <div style="display:flex;align-items:center">
+          <span class="plt-rate rate-none" id="prd-and-rate">—</span>
+          <span class="plt-arrow">›</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="footer">VYA · iOS &amp; Android Automation · Powered by Appium Studio</div>
+
+<script>
+function rateColor(r){return r===null?'rate-none':r>=90?'rate-pass':r>=70?'rate-none':'rate-fail'}
+function fmtDate(iso){try{return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}catch(e){return iso||''}}
+
+async function loadOverview(){
+  try{
+    const d = await fetch('/api/overview').then(r=>r.json());
+    const pairs = [['staging','ios'],['staging','android'],['production','ios'],['production','android']];
+    for(const [env,plt] of pairs){
+      const key = env==='staging'?'stg':'prd';
+      const data = d[env]?.[plt];
+      const ratEl = document.getElementById(`${key}-${plt==='ios'?'ios':'and'}-rate`);
+      const metEl = document.getElementById(`${key}-${plt==='ios'?'ios':'and'}-meta`);
+      if(!data){
+        ratEl.textContent='—'; ratEl.className='plt-rate rate-none';
+        metEl.textContent='No reports yet';
+      } else {
+        const rate = data.passRate!==null?data.passRate+'%':'—';
+        ratEl.textContent = rate;
+        ratEl.className = 'plt-rate '+rateColor(data.passRate);
+        metEl.textContent = `${data.label} · ${fmtDate(data.savedAt)} · ${data.totalReports} report${data.totalReports!==1?'s':''}`;
+      }
+    }
+    // Summary stats
+    for(const [env,key] of [['staging','stg'],['production','prd']]){
+      const ios = d[env]?.ios; const and = d[env]?.android;
+      const el = document.getElementById(`${key}-stats`);
+      const parts = [];
+      if(ios) parts.push(`<span class="env-stat">iOS latest: <strong>${ios.passRate!==null?ios.passRate+'%':'—'}</strong></span>`);
+      if(and) parts.push(`<span class="env-stat">Android latest: <strong>${and.passRate!==null?and.passRate+'%':'—'}</strong></span>`);
+      if(!parts.length) parts.push('<span class="env-stat">No reports saved yet</span>');
+      el.innerHTML = parts.join('');
+    }
+  }catch(e){
+    document.querySelectorAll('.plt-meta').forEach(el=>el.textContent='Server offline');
+  }
+}
+loadOverview();
+</script>
+</body>
+</html>

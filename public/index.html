@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYA QA Platform — Login</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#64748b;--border:#334155;--accent:#6366f1;--accent-hover:#818cf8;--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-container{width:100%;max-width:400px}
+.logo-area{text-align:center;margin-bottom:36px}
+.vya-badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:1px;margin-bottom:14px}
+.logo-area h1{font-size:24px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.logo-area p{font-size:13px;color:var(--muted);margin-top:6px}
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:32px 28px;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.form-group input{width:100%;padding:12px 14px;background:#0f172a;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;transition:.2s}
+.form-group input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.2)}
+.form-group input::placeholder{color:#475569}
+.btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.3px}
+.btn:hover{background:var(--accent-hover)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.error-msg{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none}
+.footer-links{text-align:center;margin-top:20px;font-size:12px;color:var(--muted)}
+.footer-links a{color:var(--accent);text-decoration:none}
+.footer-links a:hover{color:var(--accent-hover)}
+.spinner-sm{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="login-container">
+  <div class="logo-area">
+    <div class="vya-badge">VYA</div>
+    <h1>QA Platform</h1>
+    <p>Automation Test Dashboard — iOS &amp; Android</p>
+  </div>
+  <div class="card">
+    <div class="error-msg" id="errorMsg"></div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="admin@carpacsoft.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+      <button class="btn" type="submit" id="loginBtn">Sign In</button>
+    </form>
+  </div>
+  <div class="footer-links">
+    VYA QA Platform v4
+  </div>
+</div>
+
+<script>
+// If already logged in, redirect
+const token = localStorage.getItem('vya_token');
+const user = JSON.parse(localStorage.getItem('vya_user') || 'null');
+if (token && user) {
+  window.location.href = user.role === 'admin' ? '/admin/' : '/dashboard/';
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
+
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Signing in...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Login failed';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
+    localStorage.setItem('vya_token', data.token);
+    localStorage.setItem('vya_user', JSON.stringify(data.user));
+
+    window.location.href = data.user.role === 'admin' ? '/admin/' : '/dashboard/';
+  } catch (err) {
+    errEl.textContent = 'Server offline. Try the legacy dashboard link below.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+</script>
+</body>
+</html>

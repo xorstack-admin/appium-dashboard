@@ -1,0 +1,15 @@
+This folder stores versioned Appium Studio test reports.
+
+Each build version gets its own subfolder:
+
+  reports/
+  ├── v1.0.0/
+  │   ├── data.json    ← parsed test results
+  │   └── meta.json    ← version metadata (savedAt, summary counts)
+  ├── v1.1.0/
+  │   ├── data.json
+  │   └── meta.json
+  └── ...
+
+To add a new report:
+  python3 scripts/save_report.py --version v1.2.0 --report path/to/report.html

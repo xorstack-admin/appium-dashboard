@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYA Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+<style>
+:root{--bg:#0f172a;--sidebar:#1e293b;--card:#1e293b;--card-inner:#0f172a;--text:#e2e8f0;--muted:#64748b;--border:#334155;--accent:#6366f1;--accent-hover:#818cf8;--pass:#10b981;--fail:#ef4444;--warn:#f59e0b;--radius:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:10}
+.sidebar-logo{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-logo h2{font-size:16px;font-weight:800}.sidebar-logo span{font-size:11px;color:var(--muted)}
+.nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;border-left:3px solid transparent}
+.nav-item:hover{color:var(--text);background:rgba(99,102,241,.05)}
+.nav-item.active{color:var(--accent);background:rgba(99,102,241,.1);border-left-color:var(--accent)}
+.nav-icon{width:18px;text-align:center}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border)}
+.user-info{font-size:12px;color:var(--muted)}.user-info strong{color:var(--text);display:block;margin-bottom:2px}
+.logout-btn{margin-top:10px;width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s}
+.logout-btn:hover{border-color:var(--fail);color:var(--fail)}
+
+/* Main */
+.main{margin-left:220px;flex:1;padding:28px 36px;min-height:100vh}
+.page-title{font-size:22px;font-weight:800;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.page-title .badge{font-size:11px;padding:4px 10px;border-radius:12px;font-weight:700}
+
+/* Sections */
+.section{display:none}.section.active{display:block}
+
+/* Cards & Tables */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-header h3{font-size:14px;font-weight:700}
+.card-body{padding:20px}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;background:var(--card-inner);border-bottom:1px solid var(--border)}
+td{padding:11px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+tr:last-child td{border-bottom:none}
+
+/* Buttons */
+.btn{padding:8px 16px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{background:var(--card-inner)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-danger{border-color:rgba(239,68,68,.3);color:var(--fail)}
+.btn-danger:hover{background:rgba(239,68,68,.1)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-group{display:flex;gap:6px}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;background:var(--card-inner);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;outline:none;transition:.2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:60px}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:40px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:16px}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(99,102,241,.05)}
+.upload-zone .icon{font-size:36px;margin-bottom:8px}
+.upload-zone p{font-size:13px;color:var(--muted)}
+.upload-zone .hint{font-size:11px;color:#475569;margin-top:4px}
+.file-list{margin-bottom:16px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--card-inner);border-radius:6px;margin-bottom:6px;font-size:12px}
+.file-item .name{flex:1;margin-right:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item .size{color:var(--muted);margin-right:12px}
+.file-item .remove{color:var(--fail);cursor:pointer;font-weight:700}
+
+/* Badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:700}
+.badge-pass{background:rgba(16,185,129,.15);color:var(--pass)}
+.badge-fail{background:rgba(239,68,68,.15);color:var(--fail)}
+.badge-admin{background:rgba(99,102,241,.15);color:var(--accent)}
+.badge-viewer{background:rgba(148,163,184,.15);color:var(--muted)}
+.badge-env{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-stg{background:rgba(59,130,246,.15);color:#60a5fa}
+.badge-prd{background:rgba(16,185,129,.15);color:#6ee7b7}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.stat-card .label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:28px;font-weight:800;margin:4px 0;letter-spacing:-1px}
+.stat-card .sub{font-size:11px;color:var(--muted)}
+
+/* Notification */
+.toast{position:fixed;top:20px;right:20px;background:#1e293b;border:1px solid var(--accent);border-radius:8px;padding:12px 20px;font-size:13px;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;max-width:360px}
+.toast.show{display:flex;align-items:center;gap:10px}
+
+/* Responsive */
+@media(max-width:900px){.sidebar{width:60px}.sidebar-logo h2,.sidebar-logo span,.nav-item span,.sidebar-footer .user-info,.sidebar-footer .logout-btn{display:none}.nav-item{justify-content:center;padding:14px}.main{margin-left:60px;padding:16px}.stats-grid{grid-template-columns:1fr 1fr}.form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h2>VYA Admin</h2><span>QA Platform v4</span>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" onclick="showSection('overview')"><span class="nav-icon">&#9632;</span><span>Overview</span></div>
+    <div class="nav-item" onclick="showSection('upload')"><span class="nav-icon">&#8679;</span><span>Upload Report</span></div>
+    <div class="nav-item" onclick="showSection('reports')"><span class="nav-icon">&#9776;</span><span>Reports</span></div>
+    <div class="nav-item" onclick="showSection('scenarios')"><span class="nav-icon">&#9881;</span><span>Scenarios</span></div>
+    <div class="nav-item" onclick="showSection('users')"><span class="nav-icon">&#9823;</span><span>Users</span></div>
+    <div class="nav-item" onclick="showSection('settings')"><span class="nav-icon">&#9881;</span><span>Settings</span></div>
+    <div class="nav-item" onclick="showSection('logs')"><span class="nav-icon">&#9201;</span><span>Activity Logs</span></div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail">admin@carpacsoft.com</span></div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="toast" id="toast"></div>
+
+  <!-- OVERVIEW -->
+  <div class="section active" id="sec-overview">
+    <div class="page-title">Overview</div>
+    <div class="stats-grid" id="overviewStats">
+      <div class="stat-card"><div class="label">Total Reports</div><div class="value" id="statTotal">--</div><div class="sub">across all environments</div></div>
+      <div class="stat-card"><div class="label">Latest Pass Rate</div><div class="value" id="statRate">--</div><div class="sub">most recent upload</div></div>
+      <div class="stat-card"><div class="label">Users</div><div class="value" id="statUsers">--</div><div class="sub">admin + viewers</div></div>
+      <div class="stat-card"><div class="label">Scenarios</div><div class="value" id="statScenarios">--</div><div class="sub">iOS + Android</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3>Recent Reports</h3></div>
+      <table><thead><tr><th>Version</th><th>Env</th><th>Platform</th><th>Pass Rate</th><th>Uploaded</th><th>By</th></tr></thead>
+      <tbody id="recentReports"><tr><td colspan="6" style="text-align:center;color:var(--muted)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="section" id="sec-upload">
+    <div class="page-title">Upload Report</div>
+    <div class="card"><div class="card-body">
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">&#128194;</div>
+        <p>Drag &amp; drop Appium HTML reports or screenshots here</p>
+        <div class="hint">Supports .html, .xml, .json, .png, .jpg, .zip (max 25MB each). Zip files are auto-extracted.</div>
+      </div>
+      <input type="file" id="fileInput" multiple accept=".html,.xml,.json,.png,.jpg,.jpeg,.gif,.webp,.zip" style="display:none" onchange="handleFiles(this.files)">
+      <div class="file-list" id="fileList"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Environment</label><select id="upEnv"><option value="staging">Staging</option><option value="production">Production</option></select></div>
+        <div class="form-group"><label>Platform</label><select id="upPlatform"><option value="ios">iOS</option><option value="android">Android</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Version</label><input type="text" id="upVersion" placeholder="e.g., v3.4.6 or Sprint-15"></div>
+        <div class="form-group"><label>Label (optional)</label><input type="text" id="upLabel" placeholder="Human-readable label"></div>
+      </div>
+      <div class="form-group"><label>Notes (optional)</label><textarea id="upNotes" placeholder="Any notes about this report..."></textarea></div>
+      <button class="btn btn-primary" id="uploadBtn" onclick="uploadReport()">Upload &amp; Parse Report</button>
+      <div id="uploadStatus" style="margin-top:12px;font-size:13px"></div>
+    </div></div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="section" id="sec-reports">
+    <div class="page-title">Reports <span class="badge badge-pass" id="reportCount">0</span></div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group" style="margin:0"><select id="filterEnv" onchange="loadReports()"><option value="">All Environments</option><option value="staging">Staging</option><option value="production">Production</option></select></div>
+      <div class="form-group" style="margin:0"><select id="filterPlatform" onchange="loadReports()"><option value="">All Platforms</option><option value="ios">iOS</option><option value="android">Android</option></select></div>
+    </div>
+    <div class="card">
+      <table><thead><tr><th>Version</th><th>Env</th><th>Platform</th><th>Pass Rate</th><th>Scenarios</th><th>Uploaded</th><th>Actions</th></tr></thead>
+      <tbody id="reportsTable"><tr><td colspan="7" style="text-align:center;color:var(--muted)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- SCENARIOS -->
+  <div class="section" id="sec-scenarios">
+    <div class="page-title">Scenario Management</div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group" style="margin:0"><select id="scenPlatform" onchange="loadScenarios()"><option value="ios">iOS</option><option value="android">Android</option></select></div>
+      <div></div>
+    </div>
+    <div id="scenariosList"></div>
+  </div>
+
+  <!-- USERS -->
+  <div class="section" id="sec-users">
+    <div class="page-title">User Management <button class="btn btn-primary btn-sm" onclick="showAddUser()">+ Add User</button></div>
+    <div id="addUserForm" class="card" style="display:none"><div class="card-body">
+      <div class="form-row">
+        <div class="form-group"><label>Name</label><input type="text" id="newName" placeholder="Full name"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="newEmail" placeholder="email@example.com"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Password</label><input type="password" id="newPass" placeholder="Min 6 characters"></div>
+        <div class="form-group"><label>Role</label><select id="newRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
+      </div>
+      <div class="btn-group"><button class="btn btn-primary" onclick="createUser()">Create User</button><button class="btn" onclick="document.getElementById('addUserForm').style.display='none'">Cancel</button></div>
+    </div></div>
+    <div class="card">
+      <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Actions</th></tr></thead>
+      <tbody id="usersTable"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="section" id="sec-settings">
+    <div class="page-title">System Settings</div>
+    <div class="card"><div class="card-body">
+      <div class="form-row">
+        <div class="form-group"><label>Pass Rate Threshold (%)</label><input type="number" id="setPassThreshold" value="90" min="0" max="100"></div>
+        <div class="form-group"><label>Slow Step Threshold (seconds)</label><input type="number" id="setSlowThreshold" value="4" min="1" max="60"></div>
+      </div>
+      <div class="form-group"><label>Auto-Refresh Interval (seconds)</label><input type="number" id="setRefreshInterval" value="300" min="30" max="3600"></div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div></div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><h3>Alert Rules</h3><button class="btn btn-sm" onclick="addAlert()">+ Add Alert</button></div>
+      <div id="alertsList" style="padding:16px"><span style="color:var(--muted);font-size:13px">Loading...</span></div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div class="section" id="sec-logs">
+    <div class="page-title">Activity Logs</div>
+    <div class="card">
+      <table><thead><tr><th>Action</th><th>User</th><th>Target</th><th>Time</th></tr></thead>
+      <tbody id="logsTable"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const TOKEN = localStorage.getItem('vya_token');
+const USER = JSON.parse(localStorage.getItem('vya_user') || 'null');
+if (!TOKEN || !USER || USER.role !== 'admin') { window.location.href = '/'; }
+
+document.getElementById('userName').textContent = USER?.name || 'Admin';
+document.getElementById('userEmail').textContent = USER?.email || '';
+
+function logout() {
+  localStorage.removeItem('vya_token'); localStorage.removeItem('vya_user'); window.location.href = '/';
+}
+
+function api(path, opts = {}) {
+  return fetch(path, { ...opts, headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json', ...opts.headers } });
+}
+function apiJSON(path, opts = {}) { return api(path, opts).then(r => r.json()); }
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'overview') loadOverview();
+  if (name === 'reports') loadReports();
+  if (name === 'scenarios') loadScenarios();
+  if (name === 'users') loadUsers();
+  if (name === 'settings') loadSettings();
+  if (name === 'logs') loadLogs();
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, duration = 4000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── Overview ─────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  try {
+    const [reports, users] = await Promise.all([
+      apiJSON('/api/admin/reports'),
+      apiJSON('/api/admin/users'),
+    ]);
+    const reps = reports.reports || [];
+    document.getElementById('statTotal').textContent = reps.length;
+    const latest = reps[0];
+    document.getElementById('statRate').textContent = latest?.passRate != null ? latest.passRate + '%' : '--';
+    document.getElementById('statRate').style.color = latest?.passRate >= 90 ? 'var(--pass)' : latest?.passRate >= 70 ? 'var(--warn)' : 'var(--fail)';
+    document.getElementById('statUsers').textContent = (users.users || []).length;
+
+    const ios = await apiJSON('/api/admin/scenarios/ios').catch(() => ({ totalActive: 0 }));
+    const android = await apiJSON('/api/admin/scenarios/android').catch(() => ({ totalActive: 0 }));
+    document.getElementById('statScenarios').textContent = (ios.totalActive || 0) + (android.totalActive || 0);
+
+    const tbody = document.getElementById('recentReports');
+    if (!reps.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No reports yet. Upload your first report!</td></tr>'; return; }
+    tbody.innerHTML = reps.slice(0, 10).map(r => `<tr>
+      <td><strong>${esc(r.version)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(r.label||'')}</span></td>
+      <td><span class="badge-env ${r.env==='staging'?'badge-stg':'badge-prd'}">${r.env.toUpperCase()}</span></td>
+      <td>${r.platform.toUpperCase()}</td>
+      <td style="font-weight:700;color:${r.passRate>=90?'var(--pass)':r.passRate>=70?'var(--warn)':'var(--fail)'}">${r.passRate!=null?r.passRate+'%':'--'}</td>
+      <td>${fmtDate(r.createdAt)}</td>
+      <td>${r.uploadedBy?.name||'—'}</td>
+    </tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ── Upload ───────────────────────────────────────────────────────────────────
+let uploadFiles = [];
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+
+function handleFiles(fileList) {
+  for (const f of fileList) uploadFiles.push(f);
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  el.innerHTML = uploadFiles.map((f, i) => `<div class="file-item">
+    <span class="name">${esc(f.name)}</span>
+    <span class="size">${(f.size/1024).toFixed(1)} KB</span>
+    <span class="remove" onclick="removeFile(${i})">&#10005;</span>
+  </div>`).join('');
+}
+
+function removeFile(i) { uploadFiles.splice(i, 1); renderFileList(); }
+
+async function uploadReport() {
+  const env = document.getElementById('upEnv').value;
+  const platform = document.getElementById('upPlatform').value;
+  const version = document.getElementById('upVersion').value.trim();
+  const label = document.getElementById('upLabel').value.trim();
+  const notes = document.getElementById('upNotes').value.trim();
+
+  if (!version) { toast('Version is required'); return; }
+  if (!uploadFiles.length) { toast('Please add at least one file'); return; }
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  document.getElementById('uploadStatus').innerHTML = '<span style="color:var(--accent)">Uploading and parsing report...</span>';
+
+  const fd = new FormData();
+  fd.append('env', env);
+  fd.append('platform', platform);
+  fd.append('version', version);
+  if (label) fd.append('label', label);
+  if (notes) fd.append('notes', notes);
+  uploadFiles.forEach(f => fd.append('files', f));
+
+  try {
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+      body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+    document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--pass)">Upload successful! Pass rate: ${data.report.passRate}% (${data.report.totalPassed} passed, ${data.report.totalFailed} failed)</span>`;
+    uploadFiles = [];
+    renderFileList();
+    document.getElementById('upVersion').value = '';
+    document.getElementById('upLabel').value = '';
+    document.getElementById('upNotes').value = '';
+    toast('Report uploaded successfully!');
+  } catch(e) {
+    document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--fail)">${esc(e.message)}</span>`;
+  }
+  btn.disabled = false; btn.textContent = 'Upload & Parse Report';
+}
+
+// ── Reports ──────────────────────────────────────────────────────────────────
+async function loadReports() {
+  const env = document.getElementById('filterEnv').value;
+  const platform = document.getElementById('filterPlatform').value;
+  let url = '/api/admin/reports?';
+  if (env) url += 'env=' + env + '&';
+  if (platform) url += 'platform=' + platform;
+  try {
+    const data = await apiJSON(url);
+    const reps = data.reports || [];
+    document.getElementById('reportCount').textContent = reps.length;
+    const tbody = document.getElementById('reportsTable');
+    if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No reports found</td></tr>'; return; }
+    tbody.innerHTML = reps.map(r => `<tr>
+      <td><strong>${esc(r.version)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(r.label||'')}</span></td>
+      <td><span class="badge-env ${r.env==='staging'?'badge-stg':'badge-prd'}">${r.env.toUpperCase()}</span></td>
+      <td>${r.platform.toUpperCase()}</td>
+      <td style="font-weight:700;color:${r.passRate>=90?'var(--pass)':r.passRate>=70?'var(--warn)':'var(--fail)'}">${r.passRate!=null?r.passRate+'%':'--'}</td>
+      <td>${r.totalScenarios||0}</td>
+      <td>${fmtDate(r.createdAt)}</td>
+      <td class="btn-group">
+        <button class="btn btn-sm" onclick="editReport('${r._id}','${esc(r.label||'')}','${esc(r.notes||'')}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteReport('${r._id}','${esc(r.version)}')">Delete</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function deleteReport(id, version) {
+  if (!confirm(`Delete report "${version}"? This cannot be undone.`)) return;
+  try {
+    // id is "env/platform/version" — use it directly as the URL path
+    const res = await api('/api/admin/reports/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Delete failed');
+    toast('Report deleted');
+    loadReports();
+    loadOverview();
+  } catch(e) { toast('Delete failed: ' + e.message); }
+}
+
+function editReport(id, label, notes) {
+  const newLabel = prompt('Edit label:', label);
+  if (newLabel === null) return;
+  const newNotes = prompt('Edit notes:', notes);
+  api('/api/admin/reports/' + id, { method: 'PUT', body: JSON.stringify({ label: newLabel, notes: newNotes || '' }) })
+    .then(() => { toast('Report updated'); loadReports(); })
+    .catch(e => toast('Update failed'));
+}
+
+// ── Scenarios ────────────────────────────────────────────────────────────────
+async function loadScenarios() {
+  const platform = document.getElementById('scenPlatform').value;
+  try {
+    const data = await apiJSON('/api/admin/scenarios/' + platform);
+    const cats = data.categories || [];
+    const el = document.getElementById('scenariosList');
+    if (!cats.length) { el.innerHTML = '<div class="card"><div class="card-body" style="text-align:center;color:var(--muted)">No scenarios loaded. Run the migration script first.</div></div>'; return; }
+    el.innerHTML = cats.map(cat => `<div class="card">
+      <div class="card-header"><h3>${cat.id}. ${esc(cat.name)}</h3><span class="badge badge-pass">${(cat.scenarios||[]).length} scenarios</span></div>
+      <table><thead><tr><th>ID</th><th>Scenario</th><th>Status</th><th>Source</th></tr></thead>
+      <tbody>${(cat.scenarios||[]).map(sc => `<tr>
+        <td style="font-family:monospace;color:var(--muted)">${esc(sc.id)}</td>
+        <td>${esc(sc.name)}</td>
+        <td><span class="badge ${sc.status==='active'?'badge-pass':sc.status==='blocked'?'badge-fail':'badge-viewer'}">${sc.status||'active'}</span></td>
+        <td style="font-size:11px;color:var(--muted)">${esc(sc.sourceFile||'')}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ── Users ────────────────────────────────────────────────────────────────────
+function showAddUser() { document.getElementById('addUserForm').style.display = 'block'; }
+
+async function loadUsers() {
+  try {
+    const data = await apiJSON('/api/admin/users');
+    const users = data.users || [];
+    document.getElementById('usersTable').innerHTML = users.map(u => `<tr>
+      <td><strong>${esc(u.name)}</strong></td>
+      <td>${esc(u.email)}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-admin':'badge-viewer'}">${u.role}</span></td>
+      <td>${u.lastLogin ? fmtDate(u.lastLogin) : '<span style="color:var(--muted)">Never</span>'}</td>
+      <td class="btn-group">
+        <button class="btn btn-sm" onclick="toggleRole('${u._id}','${u.role}')">${u.role==='admin'?'Make Viewer':'Make Admin'}</button>
+        ${u._id !== USER._id ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u._id}','${esc(u.name)}')">Delete</button>` : ''}
+      </td>
+    </tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function createUser() {
+  const name = document.getElementById('newName').value.trim();
+  const email = document.getElementById('newEmail').value.trim();
+  const password = document.getElementById('newPass').value;
+  const role = document.getElementById('newRole').value;
+  if (!name || !email || !password) { toast('All fields required'); return; }
+  try {
+    const res = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password, role }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    document.getElementById('addUserForm').style.display = 'none';
+    toast('User created: ' + data.user.email);
+    loadUsers();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function toggleRole(id, currentRole) {
+  const newRole = currentRole === 'admin' ? 'viewer' : 'admin';
+  await api('/api/admin/users/' + id, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
+  toast('Role updated');
+  loadUsers();
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Delete user "${name}"?`)) return;
+  await api('/api/admin/users/' + id, { method: 'DELETE' });
+  toast('User deleted');
+  loadUsers();
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const data = await apiJSON('/api/admin/settings');
+    if (data.passRateThreshold != null) document.getElementById('setPassThreshold').value = data.passRateThreshold;
+    if (data.slowStepThreshold != null) document.getElementById('setSlowThreshold').value = data.slowStepThreshold;
+    if (data.autoRefreshInterval != null) document.getElementById('setRefreshInterval').value = data.autoRefreshInterval;
+  } catch(e) {}
+  loadAlerts();
+}
+
+async function saveSettings() {
+  await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({
+    passRateThreshold: parseInt(document.getElementById('setPassThreshold').value),
+    slowStepThreshold: parseInt(document.getElementById('setSlowThreshold').value),
+    autoRefreshInterval: parseInt(document.getElementById('setRefreshInterval').value),
+  })});
+  toast('Settings saved');
+}
+
+async function loadAlerts() {
+  try {
+    const data = await apiJSON('/api/admin/alerts');
+    const alerts = data.alerts || [];
+    const el = document.getElementById('alertsList');
+    if (!alerts.length) { el.innerHTML = '<span style="color:var(--muted);font-size:13px">No alert rules. Click "+ Add Alert" to create one.</span>'; return; }
+    el.innerHTML = alerts.map(a => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--card-inner);border-radius:6px;margin-bottom:8px">
+      <div><strong style="font-size:13px">${a.type.replace(/_/g,' ')}</strong>
+      ${a.type==='pass_rate_drop'?`<span style="font-size:12px;color:var(--muted)"> — below ${a.condition?.threshold||80}%</span>`:''}</div>
+      <div class="btn-group">
+        <button class="btn btn-sm" onclick="toggleAlert('${a._id}',${!a.enabled})">${a.enabled?'Disable':'Enable'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteAlert('${a._id}')">Delete</button>
+      </div>
+    </div>`).join('');
+  } catch(e) {}
+}
+
+async function addAlert() {
+  const type = prompt('Alert type:\n1 = pass_rate_drop\n2 = new_report', '1');
+  if (!type) return;
+  const alertType = type === '1' ? 'pass_rate_drop' : 'new_report';
+  let condition = {};
+  if (alertType === 'pass_rate_drop') {
+    const t = prompt('Pass rate threshold (%):', '80');
+    if (!t) return;
+    condition = { threshold: parseInt(t) };
+  }
+  await api('/api/admin/alerts', { method: 'POST', body: JSON.stringify({ type: alertType, condition }) });
+  toast('Alert created');
+  loadAlerts();
+}
+
+async function toggleAlert(id, enabled) {
+  await api('/api/admin/alerts/' + id, { method: 'PUT', body: JSON.stringify({ enabled }) });
+  loadAlerts();
+}
+
+async function deleteAlert(id) {
+  await api('/api/admin/alerts/' + id, { method: 'DELETE' });
+  loadAlerts();
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+async function loadLogs() {
+  try {
+    const data = await apiJSON('/api/admin/logs');
+    const logs = data.logs || [];
+    document.getElementById('logsTable').innerHTML = logs.length
+      ? logs.map(l => `<tr>
+          <td><span class="badge ${l.action==='upload'?'badge-pass':l.action==='delete'?'badge-fail':'badge-viewer'}">${l.action}</span></td>
+          <td>${esc(l.userName||'—')}</td>
+          <td>${esc(l.target||'—')}</td>
+          <td>${fmtDate(l.createdAt)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No activity yet</td></tr>';
+  } catch(e) { console.error(e); }
+}
+
+// ── Socket.io ────────────────────────────────────────────────────────────────
+try {
+  const socket = io();
+  socket.on('new-report', data => {
+    toast(`New report: ${data.env}/${data.platform}/${data.version} — ${data.passRate}%`);
+    if (document.getElementById('sec-overview').classList.contains('active')) loadOverview();
+    if (document.getElementById('sec-reports').classList.contains('active')) loadReports();
+  });
+  socket.on('alert', data => toast('ALERT: ' + data.message, 8000));
+} catch(e) {}
+
+// ── Utils ────────────────────────────────────────────────────────────────────
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return iso||''; } }
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadOverview();
+</script>
+</body>
+</html>

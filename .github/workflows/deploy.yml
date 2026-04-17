@@ -1,0 +1,62 @@
+name: Deploy Dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'reports/**'      # trigger only when a new report is pushed
+      - 'public/**'
+      - 'server.js'
+      - 'package.json'
+
+jobs:
+  # ── Option A: Deploy to a VPS / self-hosted server via SSH ──────────────
+  # Uncomment and configure if you're deploying to your own server.
+  #
+  # deploy-vps:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Deploy via SSH
+  #       uses: appleboy/ssh-action@v1.0.0
+  #       with:
+  #         host: ${{ secrets.SERVER_HOST }}
+  #         username: ${{ secrets.SERVER_USER }}
+  #         key: ${{ secrets.SSH_PRIVATE_KEY }}
+  #         script: |
+  #           cd /var/www/appium-dashboard
+  #           git pull origin main
+  #           npm install --production
+  #           pm2 restart appium-dashboard || pm2 start server.js --name appium-dashboard
+
+  # ── Option B: Deploy to Render.com (free tier) ───────────────────────────
+  # 1. Create account at render.com
+  # 2. New Web Service → connect this repo
+  # 3. Start command: node server.js
+  # 4. Add env var: PORT=10000
+  # Render auto-deploys on every push — no workflow needed!
+
+  # ── Option C: Deploy to Railway.app ──────────────────────────────────────
+  # railway login → railway up  (from local) — or connect GitHub repo in dashboard
+
+  # ── Notify team on new report ────────────────────────────────────────────
+  notify:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, 'test-report:')
+    steps:
+      - name: Extract version from commit message
+        id: version
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          VERSION=$(echo "$MSG" | grep -oP 'test-report: add results for \K[^\s(]+')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Post Slack notification (optional)
+        # Uncomment and add SLACK_WEBHOOK secret to use
+        # uses: slackapi/slack-github-action@v1.26.0
+        # with:
+        #   payload: |
+        #     {"text":"✅ New test report saved: *${{ steps.version.outputs.version }}*\nView dashboard: https://your-dashboard-url.com"}
+        # env:
+        #   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        run: echo "New report for ${{ steps.version.outputs.version }} — add Slack webhook to notify team"
