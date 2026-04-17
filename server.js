@@ -414,12 +414,28 @@ io.on('connection', (socket) => {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 async function start() {
-  await connectDB();
+  // Check required env vars
+  if (!process.env.MONGO_URI) {
+    console.error('ERROR: MONGO_URI environment variable is not set!');
+    console.error('Set it in Render dashboard → Environment → Add Environment Variable');
+    process.exit(1);
+  }
+  if (!process.env.JWT_SECRET) {
+    console.error('ERROR: JWT_SECRET environment variable is not set!');
+    process.exit(1);
+  }
+
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('Failed to connect to MongoDB:', err.message);
+    process.exit(1);
+  }
+
   server.listen(PORT, () => {
-    console.log(`\nVYA QA Platform v4  →  http://localhost:${PORT}`);
-    console.log(`  Login            : http://localhost:${PORT}/`);
-    console.log(`  Admin dashboard  : http://localhost:${PORT}/admin/`);
-    console.log(`  User dashboard   : http://localhost:${PORT}/dashboard/\n`);
+    console.log(`\nVYA QA Platform v4 running on port ${PORT}`);
+    console.log(`  MongoDB: connected`);
+    console.log(`  Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME || 'not configured'}\n`);
   });
 }
 
