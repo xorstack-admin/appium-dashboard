@@ -41,6 +41,10 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(PUBLIC));
 
+// Serve user-login and dashboard pages explicitly
+app.get('/user-login', (req, res) => res.sendFile(path.join(PUBLIC, 'user-login', 'index.html')));
+app.get('/user-login/', (req, res) => res.sendFile(path.join(PUBLIC, 'user-login', 'index.html')));
+
 // ── MongoDB routes ───────────────────────────────────────────────────────────
 let dbConnected = false;
 
