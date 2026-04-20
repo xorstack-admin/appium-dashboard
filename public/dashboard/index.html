@@ -5,140 +5,312 @@
 <title>VYA Automation Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
 <style>
-:root{--bg:#f0f2f5;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--shadow:0 1px 4px rgba(0,0,0,.07);--radius:14px;--accent:#6366f1}
+:root{--text:#0f172a;--muted:#64748b;--accent:#6366f1;--radius:20px}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+html,body{min-height:100vh}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 24px 40px;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%,rgba(99,102,241,.12),transparent 50%),
+    radial-gradient(ellipse 70% 60% at 80% 100%,rgba(16,185,129,.10),transparent 50%),
+    radial-gradient(ellipse 60% 50% at 50% 50%,rgba(236,72,153,.06),transparent 60%),
+    linear-gradient(180deg,#f8fafc 0%,#eef2f7 100%);
+  background-attachment:fixed;
+  overflow-x:hidden;
+}
 
-.top-bar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:12px 24px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);z-index:10}
-.top-bar .name{font-size:12px;color:var(--muted)}
-.top-bar .logout-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:.15s}
-.top-bar .logout-btn:hover{border-color:#ef4444;color:#ef4444}
+/* Top bar — glass effect */
+.top-bar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:rgba(255,255,255,.65);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);border-bottom:1px solid rgba(226,232,240,.6);z-index:10}
+.top-bar .brand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-.2px}
+.top-bar .brand-dot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 4px 12px rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;letter-spacing:.5px}
+.top-bar-right{display:flex;align-items:center;gap:14px}
+.top-bar .name{font-size:12px;color:var(--muted);font-weight:600}
+.top-bar .logout-btn{padding:7px 14px;border-radius:8px;border:1px solid rgba(226,232,240,.8);background:rgba(255,255,255,.7);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.top-bar .logout-btn:hover{border-color:#ef4444;color:#ef4444;background:rgba(254,242,242,.9)}
 
-.logo-area{text-align:center;margin-bottom:40px}
-.logo-area h1{font-size:26px;font-weight:800;letter-spacing:-.5px;color:#0f172a}
-.logo-area p{font-size:14px;color:var(--muted);margin-top:6px}
-.vya-badge{display:inline-flex;align-items:center;gap:6px;background:#0f172a;color:#fff;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.5px;margin-bottom:12px}
+/* Hero */
+.logo-area{text-align:center;margin-bottom:48px;animation:fadeUp .6s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.vya-badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:6px 18px;border-radius:24px;font-size:11px;font-weight:800;letter-spacing:1.5px;margin-bottom:18px;box-shadow:0 8px 24px rgba(15,23,42,.18)}
+.vya-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.logo-area h1{font-size:42px;font-weight:900;letter-spacing:-1.5px;background:linear-gradient(135deg,#0f172a 0%,#475569 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
+.logo-area p{font-size:15px;color:var(--muted);margin-top:10px;font-weight:500}
 
-.env-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:760px}
-.env-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;transition:.2s}
-.env-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-2px)}
-.env-header{padding:22px 24px 16px;border-bottom:1px solid var(--border)}
-.env-header-row{display:flex;justify-content:space-between;align-items:flex-start}
-.env-name{font-size:18px;font-weight:800;letter-spacing:-.3px}
-.env-tag{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700}
-.tag-stg{background:#dbeafe;color:#1e40af}
-.tag-prd{background:#dcfce7;color:#166534}
-.env-desc{font-size:12px;color:var(--muted);margin-top:4px}
-.env-stat-row{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap}
-.env-stat{font-size:12px;color:var(--muted)}
-.env-stat strong{color:var(--text);font-weight:700}
+/* ── HERO CARDS — PREMIUM SAAS ─────────────────────────────────────────────── */
+.env-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;width:100%;max-width:1280px;animation:fadeUp .8s ease}
 
-.platform-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.platform-btn{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-decoration:none;color:var(--text);border-top:1px solid var(--border);transition:.15s}
-.platform-btn:first-child{border-right:1px solid var(--border)}
-.platform-btn:hover{background:#f8fafc}
-.plt-left{display:flex;align-items:center;gap:10px}
-.plt-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.plt-icon-ios{background:#E6F1FB}
-.plt-icon-and{background:#EAF3DE}
-.plt-name{font-size:13px;font-weight:700}
-.plt-meta{font-size:11px;color:var(--muted);margin-top:1px}
-.plt-rate{font-size:20px;font-weight:800}
-.rate-pass{color:#16a34a}.rate-fail{color:#dc2626}.rate-none{color:#94a3b8}
-.plt-arrow{font-size:14px;color:var(--muted);margin-left:8px}
+.env-card{
+  position:relative;
+  background:linear-gradient(180deg,rgba(255,255,255,.85) 0%,rgba(255,255,255,.7) 100%);
+  backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 12px 40px rgba(15,23,42,.06),
+    0 2px 8px rgba(15,23,42,.04);
+  padding:32px;
+  transition:.5s cubic-bezier(.2,.8,.2,1);
+  overflow:hidden;
+}
+.env-card::before{
+  content:'';position:absolute;inset:-2px;border-radius:26px;padding:2px;
+  background:var(--card-glow);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  opacity:0;transition:.5s;pointer-events:none;
+}
+.env-card::after{
+  content:'';position:absolute;top:-100px;right:-100px;width:300px;height:300px;
+  background:var(--card-blur);border-radius:50%;filter:blur(80px);opacity:.5;pointer-events:none;
+}
+.env-card.staging{--card-glow:linear-gradient(135deg,#3b82f6,#6366f1,#8b5cf6);--card-blur:radial-gradient(circle,rgba(99,102,241,.4),transparent 70%);--accent-color:#6366f1}
+.env-card.production{--card-glow:linear-gradient(135deg,#10b981,#059669,#0d9488);--card-blur:radial-gradient(circle,rgba(16,185,129,.4),transparent 70%);--accent-color:#10b981}
+.env-card:hover{transform:translateY(-8px);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 30px 80px rgba(15,23,42,.15),0 12px 24px rgba(15,23,42,.08)}
+.env-card:hover::before{opacity:1}
+.env-card:hover .view-btn{opacity:1;transform:translateY(0)}
+.env-card:hover .plt-icon{transform:scale(1.08) rotate(-4deg)}
 
-.footer{margin-top:32px;font-size:12px;color:var(--muted);text-align:center}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+/* Header */
+.env-header{padding-bottom:22px;border-bottom:1px solid rgba(226,232,240,.7);margin-bottom:24px;position:relative;z-index:1}
+.env-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.env-name{font-size:28px;font-weight:900;letter-spacing:-.8px;color:#0f172a;display:flex;align-items:center;gap:10px}
+.env-name::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent-color);box-shadow:0 0 12px var(--accent-color);animation:pulse 2s infinite}
+.env-tag{padding:6px 14px;border-radius:24px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase}
+.tag-stg{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(139,92,246,.18));color:#4338ca;border:1px solid rgba(99,102,241,.25)}
+.tag-prd{background:linear-gradient(135deg,rgba(16,185,129,.18),rgba(13,148,136,.18));color:#065f46;border:1px solid rgba(16,185,129,.25)}
+.env-desc{font-size:13px;color:var(--muted);line-height:1.5}
+.env-stat-row{display:none}
+
+/* Platform blocks */
+.platform-grid{display:flex;flex-direction:column;gap:14px;background:transparent}
+.platform-btn{
+  padding:18px 20px;display:flex;align-items:center;gap:16px;text-decoration:none;color:var(--text);
+  background:rgba(255,255,255,.6);
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(226,232,240,.7);
+  border-radius:14px;
+  position:relative;
+  transition:.3s cubic-bezier(.2,.8,.2,1);
+  z-index:1;
+}
+.platform-btn:hover{background:rgba(255,255,255,.95);border-color:var(--accent-color);box-shadow:0 6px 20px rgba(15,23,42,.08);transform:translateY(-2px)}
+
+.plt-left{display:flex;align-items:center;gap:14px;flex-shrink:0;min-width:130px}
+.plt-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;transition:.3s cubic-bezier(.2,.8,.2,1);box-shadow:0 6px 16px rgba(15,23,42,.08)}
+.plt-icon-ios{background:linear-gradient(135deg,#E6F1FB,#dbeafe);color:#1e40af}
+.plt-icon-and{background:linear-gradient(135deg,#EAF3DE,#d1fae5);color:#166534}
+.plt-name{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.plt-meta{font-size:11px;color:var(--muted);margin-top:2px;font-weight:500;line-height:1.4}
+
+/* Center: progress + counts */
+.plt-center{flex:1;min-width:0}
+.plt-counts{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;margin-bottom:6px}
+.plt-counts .pc-pass{color:#059669;display:flex;align-items:center;gap:4px}
+.plt-counts .pc-fail{color:#dc2626;display:flex;align-items:center;gap:4px}
+.plt-counts .pc-versions{color:#4f46e5;display:flex;align-items:center;gap:5px;font-weight:700}
+.plt-counts .pc-dot{width:6px;height:6px;border-radius:50%}
+.plt-counts .pc-pass .pc-dot{background:#10b981}
+.plt-counts .pc-fail .pc-dot{background:#ef4444}
+.plt-counts .pc-versions .pc-dot{background:#6366f1;box-shadow:0 0 8px rgba(99,102,241,.5)}
+.plt-progress{height:8px;border-radius:8px;background:rgba(226,232,240,.6);overflow:hidden;display:flex}
+.plt-progress-pass{background:linear-gradient(90deg,#10b981,#059669);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.plt-progress-fail{background:linear-gradient(90deg,#ef4444,#dc2626);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+
+/* Right: rate */
+.plt-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;min-width:70px}
+.plt-rate{font-size:24px;font-weight:900;letter-spacing:-.8px;line-height:1}
+.rate-pass{background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.rate-fail{background:linear-gradient(135deg,#ef4444,#dc2626);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.rate-none{color:#94a3b8}
+.plt-rate-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.plt-arrow{display:none}
+
+/* Footer / View Reports button */
+.env-footer{margin-top:24px;padding-top:20px;border-top:1px solid rgba(226,232,240,.7);display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
+.env-footer-info{font-size:11px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.env-footer-info::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent-color);box-shadow:0 0 8px var(--accent-color)}
+.view-btn{
+  display:inline-flex;align-items:center;gap:8px;padding:9px 18px;
+  background:linear-gradient(135deg,var(--accent-color),var(--accent-color));
+  color:#fff;border-radius:10px;text-decoration:none;
+  font-size:12px;font-weight:700;letter-spacing:.3px;
+  box-shadow:0 6px 18px var(--accent-color);
+  opacity:.85;transform:translateY(2px);
+  transition:.3s cubic-bezier(.2,.8,.2,1);
+}
+.env-card.staging .view-btn{box-shadow:0 6px 18px rgba(99,102,241,.4)}
+.env-card.production .view-btn{box-shadow:0 6px 18px rgba(16,185,129,.4)}
+.view-btn:hover{transform:translateY(0) scale(1.05)}
+.view-btn span{transition:.3s}
+.view-btn:hover span{transform:translateX(3px)}
+
+.footer{margin-top:48px;font-size:12px;color:var(--muted);text-align:center;font-weight:500;display:flex;align-items:center;gap:8px;justify-content:center}
+.footer .dot{width:4px;height:4px;border-radius:50%;background:#cbd5e1}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(99,102,241,.15);border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.toast{position:fixed;top:60px;right:20px;background:#1e293b;color:#e2e8f0;border:1px solid var(--accent);border-radius:8px;padding:12px 20px;font-size:13px;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.3);display:none;max-width:360px}
+.toast{position:fixed;top:74px;right:24px;background:rgba(15,23,42,.95);backdrop-filter:blur(10px);color:#e2e8f0;border:1px solid rgba(99,102,241,.4);border-radius:12px;padding:14px 22px;font-size:13px;font-weight:500;z-index:999;box-shadow:0 12px 32px rgba(15,23,42,.3);display:none;max-width:380px;animation:slideIn .3s cubic-bezier(.2,.8,.2,1)}
 .toast.show{display:block}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
-@media(max-width:600px){.env-grid{grid-template-columns:1fr}.platform-grid{grid-template-columns:1fr}.platform-btn:first-child{border-right:none}}
+@media(max-width:900px){.env-grid{grid-template-columns:1fr;max-width:520px}.logo-area h1{font-size:32px}}
+@media(max-width:600px){.platform-grid{grid-template-columns:1fr}.platform-btn:first-child{border-right:none}.env-header{padding:24px 22px 18px}.env-name{font-size:20px}}
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <span class="name" id="userName"></span>
-  <button class="logout-btn" onclick="logout()">Sign Out</button>
+  <div class="brand"><div class="brand-dot">V</div><span>VYA QA Platform</span></div>
+  <div class="top-bar-right">
+    <span class="name" id="userName"></span>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
 </div>
 
 <div class="logo-area">
-  <div class="vya-badge">VYA</div>
+  <div class="vya-badge">LIVE DASHBOARD</div>
   <h1>Automation Dashboard</h1>
-  <p>Select an environment and platform to view test reports</p>
+  <p>Select an environment and platform to view detailed test analytics</p>
 </div>
 
 <div class="env-grid" id="envGrid">
-  <div class="env-card">
+
+  <!-- STAGING CARD -->
+  <div class="env-card staging">
     <div class="env-header">
       <div class="env-header-row">
         <div class="env-name">Staging</div>
-        <span class="env-tag tag-stg">STAGE</span>
+        <span class="env-tag tag-stg">Stage</span>
       </div>
       <div class="env-desc">Pre-release branch testing — run before each deployment</div>
-      <div class="env-stat-row" id="stg-stats"><span class="env-stat"><span class="spinner"></span></span></div>
     </div>
+
     <div class="platform-grid">
       <a class="platform-btn" href="report.html?env=staging&platform=ios" id="stg-ios">
         <div class="plt-left">
           <div class="plt-icon plt-icon-ios">&#128241;</div>
-          <div><div class="plt-name">iOS</div><div class="plt-meta" id="stg-ios-meta">Loading...</div></div>
+          <div>
+            <div class="plt-name">iOS</div>
+            <div class="plt-meta" id="stg-ios-meta">Loading...</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center">
+        <div class="plt-center">
+          <div class="plt-counts">
+            <span class="pc-versions"><span class="pc-dot"></span><span id="stg-ios-versions">--</span> versions</span>
+          </div>
+          <div class="plt-progress">
+            <div class="plt-progress-pass" id="stg-ios-bar-pass" style="width:0%"></div>
+            <div class="plt-progress-fail" id="stg-ios-bar-fail" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="plt-right">
           <span class="plt-rate rate-none" id="stg-ios-rate">--</span>
-          <span class="plt-arrow">&#8250;</span>
         </div>
       </a>
+
       <a class="platform-btn" href="report.html?env=staging&platform=android" id="stg-and">
         <div class="plt-left">
           <div class="plt-icon plt-icon-and">&#129302;</div>
-          <div><div class="plt-name">Android</div><div class="plt-meta" id="stg-and-meta">Loading...</div></div>
+          <div>
+            <div class="plt-name">Android</div>
+            <div class="plt-meta" id="stg-and-meta">Loading...</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center">
+        <div class="plt-center">
+          <div class="plt-counts">
+            <span class="pc-versions"><span class="pc-dot"></span><span id="stg-and-versions">--</span> versions</span>
+          </div>
+          <div class="plt-progress">
+            <div class="plt-progress-pass" id="stg-and-bar-pass" style="width:0%"></div>
+            <div class="plt-progress-fail" id="stg-and-bar-fail" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="plt-right">
           <span class="plt-rate rate-none" id="stg-and-rate">--</span>
-          <span class="plt-arrow">&#8250;</span>
         </div>
       </a>
     </div>
+
+    <div class="env-footer">
+      <div class="env-footer-info" id="stg-stats">Loading reports...</div>
+      <a class="view-btn" href="report.html?env=staging&platform=ios">View Reports <span>&#8594;</span></a>
+    </div>
   </div>
 
-  <div class="env-card">
+  <!-- PRODUCTION CARD -->
+  <div class="env-card production">
     <div class="env-header">
       <div class="env-header-row">
         <div class="env-name">Production</div>
-        <span class="env-tag tag-prd">PROD</span>
+        <span class="env-tag tag-prd">Prod</span>
       </div>
       <div class="env-desc">Live environment testing — full regression after each release</div>
-      <div class="env-stat-row" id="prd-stats"><span class="env-stat"><span class="spinner"></span></span></div>
     </div>
+
     <div class="platform-grid">
       <a class="platform-btn" href="report.html?env=production&platform=ios" id="prd-ios">
         <div class="plt-left">
           <div class="plt-icon plt-icon-ios">&#128241;</div>
-          <div><div class="plt-name">iOS</div><div class="plt-meta" id="prd-ios-meta">Loading...</div></div>
+          <div>
+            <div class="plt-name">iOS</div>
+            <div class="plt-meta" id="prd-ios-meta">Loading...</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center">
+        <div class="plt-center">
+          <div class="plt-counts">
+            <span class="pc-versions"><span class="pc-dot"></span><span id="prd-ios-versions">--</span> versions</span>
+          </div>
+          <div class="plt-progress">
+            <div class="plt-progress-pass" id="prd-ios-bar-pass" style="width:0%"></div>
+            <div class="plt-progress-fail" id="prd-ios-bar-fail" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="plt-right">
           <span class="plt-rate rate-none" id="prd-ios-rate">--</span>
-          <span class="plt-arrow">&#8250;</span>
         </div>
       </a>
+
       <a class="platform-btn" href="report.html?env=production&platform=android" id="prd-and">
         <div class="plt-left">
           <div class="plt-icon plt-icon-and">&#129302;</div>
-          <div><div class="plt-name">Android</div><div class="plt-meta" id="prd-and-meta">Loading...</div></div>
+          <div>
+            <div class="plt-name">Android</div>
+            <div class="plt-meta" id="prd-and-meta">Loading...</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center">
+        <div class="plt-center">
+          <div class="plt-counts">
+            <span class="pc-versions"><span class="pc-dot"></span><span id="prd-and-versions">--</span> versions</span>
+          </div>
+          <div class="plt-progress">
+            <div class="plt-progress-pass" id="prd-and-bar-pass" style="width:0%"></div>
+            <div class="plt-progress-fail" id="prd-and-bar-fail" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="plt-right">
           <span class="plt-rate rate-none" id="prd-and-rate">--</span>
-          <span class="plt-arrow">&#8250;</span>
         </div>
       </a>
+    </div>
+
+    <div class="env-footer">
+      <div class="env-footer-info" id="prd-stats">Loading reports...</div>
+      <a class="view-btn" href="report.html?env=production&platform=ios">View Reports <span>&#8594;</span></a>
     </div>
   </div>
 </div>
 
-<div class="footer">VYA · iOS &amp; Android Automation · Powered by Appium Studio</div>
+<div class="footer">
+  <span>VYA</span><span class="dot"></span>
+  <span>iOS &amp; Android Automation</span><span class="dot"></span>
+  <span>Powered by Appium Studio</span>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -172,28 +344,49 @@ async function loadOverview() {
     const pairs = [['staging','ios'], ['staging','android'], ['production','ios'], ['production','android']];
     for (const [env, plt] of pairs) {
       const key = env === 'staging' ? 'stg' : 'prd';
+      const sfx = plt === 'ios' ? 'ios' : 'and';
       const data = d[env]?.[plt];
-      const ratEl = document.getElementById(`${key}-${plt === 'ios' ? 'ios' : 'and'}-rate`);
-      const metEl = document.getElementById(`${key}-${plt === 'ios' ? 'ios' : 'and'}-meta`);
+      const ratEl = document.getElementById(`${key}-${sfx}-rate`);
+      const metEl = document.getElementById(`${key}-${sfx}-meta`);
+      const versionsEl = document.getElementById(`${key}-${sfx}-versions`);
+      const barPass = document.getElementById(`${key}-${sfx}-bar-pass`);
+      const barFail = document.getElementById(`${key}-${sfx}-bar-fail`);
+
       if (!data) {
         ratEl.textContent = '--'; ratEl.className = 'plt-rate rate-none';
         metEl.textContent = 'No reports yet';
+        if (versionsEl) versionsEl.textContent = '0';
+        if (barPass) barPass.style.width = '0%';
+        if (barFail) barFail.style.width = '0%';
       } else {
         const rate = data.passRate !== null ? data.passRate + '%' : '--';
         ratEl.textContent = rate;
         ratEl.className = 'plt-rate ' + rateColor(data.passRate);
-        metEl.textContent = `${data.label} · ${fmtDate(data.savedAt)} · ${data.totalReports} report${data.totalReports !== 1 ? 's' : ''}`;
+        metEl.textContent = `${data.label} · ${fmtDate(data.savedAt)}`;
+
+        const passed = data.passed || 0;
+        const failed = data.failed || 0;
+        const total = passed + failed;
+        const totalReports = data.totalReports || 0;
+        if (versionsEl) versionsEl.textContent = totalReports;
+        if (barPass && barFail && total > 0) {
+          setTimeout(() => {
+            barPass.style.width = ((passed / total) * 100) + '%';
+            barFail.style.width = ((failed / total) * 100) + '%';
+          }, 100);
+        }
       }
     }
+
+    // Footer info per env
     for (const [env, key] of [['staging', 'stg'], ['production', 'prd']]) {
       const ios = d[env]?.ios;
       const and = d[env]?.android;
       const el = document.getElementById(`${key}-stats`);
-      const parts = [];
-      if (ios) parts.push(`<span class="env-stat">iOS latest: <strong>${ios.passRate !== null ? ios.passRate + '%' : '--'}</strong></span>`);
-      if (and) parts.push(`<span class="env-stat">Android latest: <strong>${and.passRate !== null ? and.passRate + '%' : '--'}</strong></span>`);
-      if (!parts.length) parts.push('<span class="env-stat">No reports saved yet</span>');
-      el.innerHTML = parts.join('');
+      const totalReports = (ios?.totalReports || 0) + (and?.totalReports || 0);
+      el.textContent = totalReports > 0
+        ? `${totalReports} report${totalReports !== 1 ? 's' : ''} synced`
+        : 'No reports saved yet';
     }
   } catch(e) {
     document.querySelectorAll('.plt-meta').forEach(el => el.textContent = 'Failed to load');

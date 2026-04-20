@@ -6,6 +6,10 @@ const failedStepSchema = new mongoose.Schema({
 
 const subScenarioSchema = new mongoose.Schema({
   name: String,
+  category: { type: String, default: 'Uncategorized' },
+  app: { type: String, default: '' },
+  validationSummary: { type: String, default: '' },
+  duration: { type: Number, default: 0 },
   totalSteps: { type: Number, default: 0 },
   passedSteps: { type: Number, default: 0 },
   failedSteps: { type: Number, default: 0 },

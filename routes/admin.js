@@ -7,7 +7,7 @@ const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 const Setting = require('../models/Setting');
 const Alert = require('../models/Alert');
-const { parseHTML } = require('../services/parser');
+const { parseHTML, parseXML } = require('../services/parser');
 const AdmZip = require('adm-zip');
 const { uploadBuffer, deleteFile } = require('../services/cloudinaryService');
 const { checkAlerts } = require('../services/alertService');
@@ -103,13 +103,73 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
       }
     }
 
-    // Parse JSON reports (if they contain test data)
+    // Parse XML files (Appium test definitions — extracts scenario names only)
+    for (const file of xmlFiles) {
+      try {
+        const content = file.buffer.toString('utf-8');
+        const parsed = parseXML(content, file.originalname);
+        if (parsed.subScenarios && parsed.subScenarios.length > 0) {
+          scenarioRuns.push(parsed);
+        }
+      } catch (xmlErr) {
+        console.error(`Warning: failed to parse ${file.originalname}:`, xmlErr.message);
+      }
+    }
+
+    // Parse JSON reports — handles multiple formats
     for (const file of jsonFiles) {
       try {
         const raw = JSON.parse(file.buffer.toString('utf-8'));
         const arr = Array.isArray(raw) ? raw : [raw];
         for (const item of arr) {
-          if (item.subScenarios || item.scenario) scenarioRuns.push(item);
+          // Format 1: already-parsed scenario run (has subScenarios)
+          if (item.subScenarios && Array.isArray(item.subScenarios)) {
+            scenarioRuns.push(item);
+            continue;
+          }
+          // Format 2: array of test results [{name, status, duration}, ...]
+          if (item.tests && Array.isArray(item.tests)) {
+            const subs = item.tests.map(t => ({
+              name: t.name || t.title || 'Unknown',
+              category: require('../services/parser').categorize(t.name || t.title || ''),
+              duration: parseFloat(t.duration || t.time || 0),
+              totalSteps: 1,
+              passedSteps: (t.status || t.state || '').toLowerCase() === 'passed' ? 1 : 0,
+              failedSteps: (t.status || t.state || '').toLowerCase() === 'failed' ? 1 : 0,
+              slowSteps: 0,
+              overall: (t.status || t.state || '').toLowerCase() === 'failed' ? 'Failed' : 'Passed',
+              failed: [], slow: [],
+            }));
+            scenarioRuns.push({
+              scenario: item.name || file.originalname.replace(/\.json$/i, ''),
+              device: item.device || '', runStarted: item.runStarted || '', totalTime: item.totalTime || '',
+              overall: subs.some(s => s.overall === 'Failed') ? 'Failed' : 'Passed',
+              totalSteps: subs.length,
+              passedSteps: subs.filter(s => s.overall === 'Passed').length,
+              failedSteps: subs.filter(s => s.overall === 'Failed').length,
+              slowSteps: 0,
+              subScenarios: subs,
+            });
+            continue;
+          }
+          // Format 3: single test {name, status, duration}
+          if (item.name && (item.status || item.overall)) {
+            const isFailed = (item.status || item.overall || '').toLowerCase() === 'failed';
+            scenarioRuns.push({
+              scenario: file.originalname.replace(/\.json$/i, ''),
+              device: '', runStarted: '', totalTime: '',
+              overall: isFailed ? 'Failed' : 'Passed',
+              totalSteps: 1, passedSteps: isFailed ? 0 : 1, failedSteps: isFailed ? 1 : 0, slowSteps: 0,
+              subScenarios: [{
+                name: item.name,
+                category: require('../services/parser').categorize(item.name),
+                duration: parseFloat(item.duration || 0),
+                totalSteps: 1, passedSteps: isFailed ? 0 : 1, failedSteps: isFailed ? 1 : 0, slowSteps: 0,
+                overall: isFailed ? 'Failed' : 'Passed',
+                failed: [], slow: [],
+              }],
+            });
+          }
         }
       } catch (jsonErr) {
         console.error(`Warning: failed to parse ${file.originalname}:`, jsonErr.message);

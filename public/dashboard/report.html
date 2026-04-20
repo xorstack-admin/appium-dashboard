@@ -111,6 +111,327 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.charts{grid-template-columns:1fr}}
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.container{padding:14px}.hdr,.ctrl-bar{padding:14px 16px}}
+
+/* Platform Analytics */
+.analytics-section{margin-bottom:24px}
+.analytics-head{display:flex;justify-content:space-between;align-items:flex-end;margin:28px 0 14px}
+.a-title{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.a-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:var(--card);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);border:1px solid var(--border);border-left:4px solid #6366f1}
+.kpi-card.k-pass{border-left-color:#10b981}
+.kpi-card.k-fail{border-left-color:#ef4444}
+.kpi-card.k-rate{border-left-color:#f59e0b}
+.kpi-card.k-dur{border-left-color:#8b5cf6}
+.kpi-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi-val{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:3px 0;color:var(--text)}
+.kpi-sub{font-size:11px;color:var(--muted)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.chart-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.chart-card h4{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.chart-area-sm{position:relative;height:220px}
+.insights{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:16px}
+.insights h4{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.insight-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:6px;font-size:13px}
+.insight-item.i-warn{background:#fef3c7;color:#92400e;border-left:3px solid #f59e0b}
+.insight-item.i-good{background:#d1fae5;color:#065f46;border-left:3px solid #10b981}
+.insight-item.i-info{background:#dbeafe;color:#1e40af;border-left:3px solid #3b82f6}
+
+/* Phase 2 */
+.phase2-card{background:var(--card);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.p2-head{margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.p2-title{font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.2px;display:flex;align-items:center;gap:10px}
+.p2-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.p2-pill{font-size:11px;font-weight:700;background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:12px}
+.p2-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p2-select{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:var(--text);outline:none;cursor:pointer;min-width:180px}
+.p2-select:focus{border-color:#6366f1}
+.p2-vs{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.p2-btn{padding:9px 20px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+.p2-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,.4)}
+.cmp-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.cmp-card{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px 14px;border-left:4px solid #6366f1}
+.cmp-card.improved{border-left-color:#10b981}
+.cmp-card.regressed{border-left-color:#ef4444}
+.cmp-card.stable{border-left-color:#94a3b8}
+.cmp-card.diff{border-left-color:#f59e0b}
+.cmp-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.cmp-val{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px}
+.cmp-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:10px}
+.cmp-table th{padding:8px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;background:#f8fafc;text-align:left;border-bottom:1px solid var(--border)}
+.cmp-table td{padding:9px 14px;font-size:12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.cmp-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.cmp-tag.improved{background:#d1fae5;color:#065f46}
+.cmp-tag.regressed{background:#fee2e2;color:#991b1b}
+.cmp-tag.stable{background:#f1f5f9;color:#64748b}
+.cmp-tag.stillFailing{background:#fef3c7;color:#92400e}
+.cmp-tag.new{background:#dbeafe;color:#1e40af}
+.cmp-tag.removed{background:#e9d5ff;color:#6b21a8}
+.flaky-row{display:flex;align-items:center;gap:14px;padding:11px 14px;border-radius:8px;background:#fef9c3;border-left:3px solid #f59e0b;margin-bottom:6px}
+.flaky-name{flex:1;font-size:12px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flaky-cat{font-size:11px;color:var(--muted);padding:2px 8px;background:#fff;border-radius:4px}
+.flaky-rate{font-size:13px;font-weight:800;color:#dc2626;min-width:50px;text-align:right}
+.flaky-history{display:flex;gap:3px}
+.flaky-dot{width:14px;height:14px;border-radius:3px;font-size:9px}
+.flaky-dot.p{background:#10b981}
+.flaky-dot.f{background:#ef4444}
+
+/* Phase 2 Premium Compare */
+.quick-pills{display:flex;gap:8px;flex-wrap:wrap}
+.qp{padding:6px 14px;background:#fff;border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+.qp:hover{background:#eef2ff;color:var(--accent);border-color:var(--accent)}
+
+.p2-btn-ghost{padding:7px 14px;background:transparent;border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+.p2-btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Verdict Banner */
+.verdict-banner{padding:18px 22px;border-radius:14px;margin-bottom:18px;display:flex;align-items:center;gap:16px;border-left:6px solid #6366f1;background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.04))}
+.verdict-banner.good{border-left-color:#10b981;background:linear-gradient(135deg,rgba(16,185,129,.10),rgba(5,150,105,.04))}
+.verdict-banner.critical{border-left-color:#ef4444;background:linear-gradient(135deg,rgba(239,68,68,.10),rgba(220,38,38,.04))}
+.verdict-banner.mixed{border-left-color:#f59e0b;background:linear-gradient(135deg,rgba(245,158,11,.10),rgba(217,119,6,.04))}
+.verdict-banner.warning{border-left-color:#f97316;background:linear-gradient(135deg,rgba(249,115,22,.10),rgba(234,88,12,.04))}
+.verdict-banner.stable{border-left-color:#94a3b8;background:linear-gradient(135deg,rgba(148,163,184,.10),rgba(100,116,139,.04))}
+.verdict-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#fff;box-shadow:0 4px 12px rgba(15,23,42,.06);flex-shrink:0}
+.verdict-content{flex:1}
+.verdict-title{font-size:18px;font-weight:800;letter-spacing:-.3px;margin-bottom:2px}
+.verdict-msg{font-size:13px;color:var(--muted)}
+.verdict-action{padding:8px 16px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.verdict-action.good{background:#10b981;color:#fff}
+.verdict-action.critical{background:#ef4444;color:#fff}
+.verdict-action.mixed{background:#f59e0b;color:#fff}
+.verdict-action.warning{background:#f97316;color:#fff}
+.verdict-action.stable{background:#94a3b8;color:#fff}
+
+/* Health Score Cards (side-by-side comparison) */
+.health-grid{display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;margin-bottom:18px;align-items:center}
+.health-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+.health-card .vlabel{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.health-card .vname{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.3px;margin-bottom:14px}
+.health-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.health-row .lbl{font-size:11px;color:var(--muted);font-weight:600}
+.health-row .val{font-size:14px;font-weight:700}
+.health-score{display:flex;align-items:center;gap:8px;padding-top:12px;margin-top:8px;border-top:1px dashed #e2e8f0}
+.health-score-bar{flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.health-score-fill{height:100%;background:linear-gradient(90deg,#10b981,#059669);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.health-score-fill.medium{background:linear-gradient(90deg,#f59e0b,#d97706)}
+.health-score-fill.low{background:linear-gradient(90deg,#ef4444,#dc2626)}
+.health-score-num{font-size:18px;font-weight:900;letter-spacing:-.5px;min-width:40px;text-align:right}
+.health-arrow{display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--muted)}
+.health-arrow.up{color:#10b981}
+.health-arrow.down{color:#ef4444}
+
+/* Mini donut charts */
+.mini-donut{position:relative;width:80px;height:80px;margin:0 auto 8px}
+.mini-donut svg{transform:rotate(-90deg)}
+.mini-donut-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:800;letter-spacing:-.3px}
+
+/* Severity Filter Tabs */
+.sev-tabs{display:flex;gap:0;background:#f1f5f9;padding:4px;border-radius:10px;margin-bottom:12px;flex-wrap:wrap}
+.sev-tab{padding:7px 14px;border-radius:7px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;transition:.15s;background:transparent;border:none;display:flex;align-items:center;gap:6px}
+.sev-tab:hover{color:var(--text)}
+.sev-tab.active{background:#fff;color:var(--text);box-shadow:0 2px 6px rgba(15,23,42,.08)}
+.sev-tab .count{background:#e2e8f0;color:#64748b;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.sev-tab.active.regressed .count{background:#ef4444;color:#fff}
+.sev-tab.active.improved .count{background:#10b981;color:#fff}
+.sev-tab.active.stillFailing .count{background:#f59e0b;color:#fff}
+.sev-tab.active.new .count{background:#3b82f6;color:#fff}
+
+/* Category Heatmap */
+.heatmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:14px}
+.heat-cell{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;transition:.15s}
+.heat-cell:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(15,23,42,.08)}
+.heat-cell.bad{border-left:4px solid #ef4444;background:linear-gradient(90deg,rgba(239,68,68,.06),transparent)}
+.heat-cell.good{border-left:4px solid #10b981;background:linear-gradient(90deg,rgba(16,185,129,.06),transparent)}
+.heat-cell.neutral{border-left:4px solid #94a3b8}
+.heat-cat{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.heat-stats{display:flex;gap:8px;font-size:11px;font-weight:600}
+.heat-stats .h-imp{color:#10b981}
+.heat-stats .h-reg{color:#ef4444}
+.heat-stats .h-stl{color:#f59e0b}
+
+/* Failure diff inline */
+.fail-diff{padding:8px 14px;background:#fef2f2;border-left:3px solid #ef4444;border-radius:6px;margin-top:4px;font-size:11px;color:#7f1d1d;line-height:1.5}
+.fail-diff.same{background:#fef3c7;border-left-color:#f59e0b;color:#78350f}
+.fail-diff strong{font-weight:800}
+
+/* Trend arrows in table */
+.trend-arrow{display:inline-flex;align-items:center;gap:3px;font-weight:800}
+.trend-arrow.up{color:#10b981}
+.trend-arrow.down{color:#ef4444}
+.trend-arrow.flat{color:#94a3b8}
+
+/* Diff Timeline */
+.diff-timeline{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.dt-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.dt-label .dt-hint{font-size:10px;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0}
+.dt-track{position:relative;height:60px;padding:10px 0}
+.dt-line{position:absolute;left:10px;right:10px;top:50%;height:2px;background:linear-gradient(90deg,#e2e8f0,#cbd5e1,#e2e8f0);transform:translateY(-50%)}
+.dt-dots{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 10px}
+.dt-dot{position:relative;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #cbd5e1;cursor:pointer;transition:.2s;z-index:1}
+.dt-dot:hover{transform:scale(1.3);border-color:var(--accent)}
+.dt-dot.high{border-color:#10b981}
+.dt-dot.med{border-color:#f59e0b}
+.dt-dot.low{border-color:#ef4444}
+.dt-dot.sel-v1{background:#6366f1;border-color:#6366f1;box-shadow:0 0 0 4px rgba(99,102,241,.25);transform:scale(1.3)}
+.dt-dot.sel-v2{background:#10b981;border-color:#10b981;box-shadow:0 0 0 4px rgba(16,185,129,.25);transform:scale(1.3)}
+.dt-dot-tip{position:absolute;bottom:120%;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none;transition:.15s;z-index:10}
+.dt-dot:hover .dt-dot-tip{opacity:1}
+.dt-tip-hint{font-size:10px;color:var(--muted);text-align:center;margin-top:4px}
+
+/* Before/After Morph Slider */
+.morph-slider{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:14px}
+.morph-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.morph-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.morph-value{font-size:12px;font-weight:700;color:var(--accent)}
+.morph-bar{height:40px;background:linear-gradient(90deg,rgba(99,102,241,.1),rgba(16,185,129,.1));border-radius:8px;position:relative;display:flex;align-items:center;padding:0 14px;margin-bottom:8px}
+.morph-stat{font-size:14px;font-weight:800;letter-spacing:-.3px;transition:.25s}
+.morph-stat .prefix{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-right:6px}
+.morph-range{width:100%;appearance:none;height:6px;background:linear-gradient(90deg,#6366f1 var(--pct,50%),#e2e8f0 var(--pct,50%));border-radius:3px;outline:none}
+.morph-range::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #6366f1;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,.4)}
+.morph-range::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #6366f1;cursor:pointer}
+
+/* Stability score indicator in table */
+.stab-pips{display:inline-flex;gap:2px;font-size:10px}
+.stab-pips .pip{color:#10b981}
+.stab-pips .pip.off{color:#cbd5e1}
+
+/* Version notes banner */
+.version-notes{background:#fefce8;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#78350f;display:flex;gap:10px}
+.version-notes .vn-title{font-weight:700;white-space:nowrap}
+.version-notes .vn-body{flex:1;line-height:1.5}
+
+/* Share / Notify */
+.share-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.share-btn{padding:7px 14px;background:#fff;border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.share-btn:hover{border-color:var(--accent);color:var(--accent);background:#eef2ff}
+.share-btn.slack:hover{border-color:#4a154b;color:#4a154b;background:rgba(74,21,75,.05)}
+
+/* Compare Modal Overlay */
+.cmp-modal{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;animation:modalFade .25s ease}
+.cmp-modal.open{display:flex}
+@keyframes modalFade{from{opacity:0}to{opacity:1}}
+.cmp-modal-content{background:#f8fafc;border-radius:16px;width:100%;max-width:1400px;box-shadow:0 30px 80px rgba(15,23,42,.4);overflow:hidden;animation:modalSlide .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes modalSlide{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.cmp-modal-header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:2}
+.cmp-modal-header h2{font-size:20px;font-weight:800;letter-spacing:-.3px;margin:0;display:flex;align-items:center;gap:10px}
+.cmp-modal-header .sub{font-size:12px;color:#94a3b8;font-weight:500;margin-top:2px}
+.cmp-modal-close{width:38px;height:38px;border-radius:10px;border:1px solid #334155;background:rgba(255,255,255,.08);color:#fff;font-size:18px;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}
+.cmp-modal-close:hover{background:#ef4444;border-color:#ef4444;transform:rotate(90deg)}
+.cmp-modal-body{padding:24px 28px 40px}
+
+/* Root Cause Analytics */
+.rc-tabs{display:flex;gap:0;background:#f1f5f9;padding:4px;border-radius:10px;margin-bottom:14px;flex-wrap:wrap}
+.rc-tab{padding:8px 14px;border-radius:7px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;background:transparent;border:none;transition:.15s}
+.rc-tab:hover{color:var(--text)}
+.rc-tab.active{background:#fff;color:var(--text);box-shadow:0 2px 6px rgba(15,23,42,.08)}
+
+/* Crash banner — major callout */
+.rc-crash{background:linear-gradient(135deg,rgba(220,38,38,.12),rgba(239,68,68,.04));border:1px solid rgba(220,38,38,.35);border-left:6px solid #dc2626;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px}
+.rc-crash-icon{width:48px;height:48px;border-radius:12px;background:#dc2626;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;box-shadow:0 6px 18px rgba(220,38,38,.3)}
+.rc-crash-content{flex:1;min-width:0}
+.rc-crash-title{font-size:16px;font-weight:800;color:#7f1d1d;letter-spacing:-.2px}
+.rc-crash-sub{font-size:12px;color:#991b1b;margin-top:3px;line-height:1.5}
+.rc-crash-pill{padding:6px 14px;background:#dc2626;color:#fff;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;animation:pulse 2s infinite}
+
+/* Cluster cards */
+.rc-cluster{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid var(--c-color,#6366f1)}
+.rc-cluster-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.rc-cluster-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rc-cluster-tag{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px}
+.rc-cluster-count{font-size:24px;font-weight:900;color:#dc2626;letter-spacing:-.5px;line-height:1}
+.rc-cluster-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.rc-cluster-err{font-size:12px;color:var(--text);background:#f8fafc;border-radius:6px;padding:8px 12px;font-family:monospace;margin:8px 0;line-height:1.5;word-break:break-word}
+.rc-cluster-cats{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rc-cluster-cat{font-size:11px;color:#4f46e5;background:#eef2ff;padding:3px 10px;border-radius:4px;font-weight:600}
+.rc-cluster-root{font-size:12px;color:#92400e;background:#fef3c7;padding:8px 12px;border-radius:6px;margin-top:6px}
+.rc-cluster-root strong{font-weight:800}
+
+/* Pattern distribution (bar chart) */
+.rc-pattern-grid{display:flex;flex-direction:column;gap:10px}
+.rc-pattern-row{display:flex;align-items:center;gap:14px}
+.rc-pattern-label{min-width:160px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+.rc-pattern-dot{width:10px;height:10px;border-radius:50%}
+.rc-pattern-bar{flex:1;height:24px;background:#f1f5f9;border-radius:6px;overflow:hidden;position:relative}
+.rc-pattern-fill{height:100%;transition:width .6s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;padding-left:10px;color:#fff;font-size:11px;font-weight:700}
+.rc-pattern-count{min-width:80px;text-align:right;font-size:12px;color:var(--muted);font-weight:600}
+.rc-pattern-count strong{color:var(--text);font-size:14px;font-weight:800}
+
+/* Step heatmap */
+.rc-step-row{display:flex;align-items:center;gap:12px;padding:6px 0}
+.rc-step-num{width:60px;font-size:12px;font-weight:700;color:var(--muted)}
+.rc-step-bar{flex:1;height:22px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.rc-step-fill{height:100%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:4px;transition:width .6s}
+.rc-step-count{min-width:90px;text-align:right;font-size:12px;font-weight:700}
+
+/* Blame version cards */
+.rc-blame-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid #f59e0b}
+.rc-blame-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.rc-blame-version{font-size:14px;font-weight:800;letter-spacing:-.3px}
+.rc-blame-count{font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;padding:3px 10px;border-radius:12px}
+.rc-blame-scenarios{display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto}
+.rc-blame-item{font-size:11px;padding:6px 10px;background:#f8fafc;border-radius:4px;display:flex;justify-content:space-between;gap:10px}
+.rc-blame-item .name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.rc-blame-item .cat{color:var(--muted);font-size:10px}
+
+.rc-empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+
+/* Tier 4: Visualizations */
+.viz-container{background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto}
+.viz-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.viz-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)}
+.viz-legend-dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:5px}
+
+/* Sankey */
+.sankey-svg{display:block;width:100%;height:auto}
+.sankey-flow{transition:.2s;cursor:pointer}
+.sankey-flow:hover{opacity:.7}
+.sankey-node{font-size:11px;font-weight:700;fill:var(--text)}
+.sankey-count{font-size:10px;fill:var(--muted);font-weight:600}
+
+/* Calendar Heatmap */
+.cal-controls{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cal-controls select{padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;outline:none;cursor:pointer}
+.cal-grid{display:grid;grid-template-columns:auto repeat(53,1fr);gap:3px;overflow-x:auto;padding:8px 0}
+.cal-month-label{font-size:10px;color:var(--muted);grid-column:span 4;text-align:left}
+.cal-day-label{font-size:9px;color:var(--muted);padding:2px 4px;align-self:center}
+.cal-cell{width:14px;height:14px;border-radius:2px;cursor:pointer;transition:.15s;background:#ebedf0}
+.cal-cell:hover{transform:scale(1.4);box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.cal-cell.l0{background:#ebedf0}
+.cal-cell.l1{background:#fee2e2}
+.cal-cell.l2{background:#fecaca}
+.cal-cell.l3{background:#f87171}
+.cal-cell.l4{background:#fca5a5}
+.cal-cell.h1{background:#bbf7d0}
+.cal-cell.h2{background:#86efac}
+.cal-cell.h3{background:#4ade80}
+.cal-cell.h4{background:#22c55e}
+.cal-cell.h5{background:#16a34a}
+.cal-tooltip{position:absolute;background:#0f172a;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;pointer-events:none;z-index:100;white-space:nowrap;display:none;font-weight:600}
+.cal-details{margin-top:14px;padding:12px;background:#f8fafc;border-radius:8px;display:none}
+.cal-details-title{font-size:13px;font-weight:800;margin-bottom:8px}
+.cal-details-row{font-size:11px;color:var(--muted);padding:4px 0;display:flex;justify-content:space-between}
+
+/* Treemap */
+.treemap-wrap{position:relative;width:100%;height:500px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#f8fafc}
+.tm-rect{position:absolute;border:1px solid #fff;overflow:hidden;padding:6px;cursor:pointer;transition:.15s;color:#fff;display:flex;flex-direction:column;justify-content:flex-start}
+.tm-rect:hover{filter:brightness(1.15);z-index:2}
+.tm-name{font-size:11px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm-count{font-size:18px;font-weight:900;letter-spacing:-.5px;line-height:1;margin-top:2px}
+.tm-sub{font-size:9px;opacity:.85;line-height:1.2;margin-top:1px}
+
+/* Step Flow */
+.sf-scenario{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.sf-title{font-size:13px;font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.sf-fail-pill{font-size:10px;padding:3px 10px;border-radius:12px;background:#fee2e2;color:#991b1b;font-weight:700}
+.sf-steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sf-step{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px}
+.sf-step-box{padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;color:#fff;min-width:80px;text-align:center}
+.sf-step-box.pass{background:linear-gradient(135deg,#10b981,#059669)}
+.sf-step-box.fail{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 0 3px rgba(239,68,68,.2)}
+.sf-step-box.skip{background:linear-gradient(135deg,#94a3b8,#64748b);opacity:.6}
+.sf-step-num{font-size:9px;color:var(--muted);font-weight:700}
+.sf-step-arrow{color:var(--muted);font-size:12px;font-weight:700}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.charts-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -154,6 +475,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="ctrl-wrap"><select class="ctrl-select" id="versionSelect" onchange="loadVersion(this.value)" style="min-width:190px"><option>Loading...</option></select></div>
     <div class="ctrl-meta" id="buildMeta"></div>
     <div style="display:flex;gap:8px;margin-left:auto">
+      <button class="ctrl-btn primary" onclick="openCompareModal()" title="Compare Versions">&#8644; Compare Versions</button>
+      <button class="ctrl-btn primary" onclick="openRootCauseModal()" title="Root Cause Analytics">&#128269; Root Cause</button>
+      <button class="ctrl-btn primary" onclick="openVizModal()" title="Advanced Visualizations">&#128202; Visualizations</button>
       <button class="ctrl-btn primary" onclick="exportXLSX()" title="Export Excel">&#8595; Excel</button>
       <button class="ctrl-btn" onclick="exportCSV()" title="Export CSV">&#8595; CSV</button>
       <button class="ctrl-btn" onclick="init()">&#8635;</button>
@@ -179,19 +503,62 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="container">
   <div id="pane-build">
-    <div class="stats">
-      <div class="stat"><div class="lbl">Scenarios Run</div><div class="num nb" id="xTotal">--</div><div class="info" id="xTotalInfo">--</div></div>
-      <div class="stat s-pass"><div class="lbl">Passed</div><div class="num ng" id="xPass">--</div><div class="info" id="xPassInfo">--</div></div>
-      <div class="stat s-fail"><div class="lbl">Failed</div><div class="num nr" id="xFail">--</div><div class="info" id="xFailInfo">--</div></div>
-      <div class="stat s-slow"><div class="lbl">Slow Steps >4s</div><div class="num no" id="xSlow">--</div><div class="info">Steps over 4 seconds</div></div>
-      <div class="stat s-rate"><div class="lbl">Pass Rate</div><div class="num" id="xRate">--</div><div class="info" id="xRateInfo">--</div></div>
-      <div class="stat s-nr"><div class="lbl">Not Run</div><div class="num nm" id="xNotRun">--</div><div class="info" id="xNotRunInfo">this session</div></div>
+    <div class="stats" style="display:none">
+      <div class="stat" style="display:none"><div class="num" id="xTotal">--</div><div class="info" id="xTotalInfo">--</div></div>
+      <div class="stat" style="display:none"><div class="num" id="xPass">--</div><div class="info" id="xPassInfo">--</div></div>
+      <div class="stat" style="display:none"><div class="num" id="xFail">--</div><div class="info" id="xFailInfo">--</div></div>
+      <div class="stat" style="display:none"><div class="num" id="xSlow">--</div></div>
+      <div class="stat" style="display:none"><div class="num" id="xRate">--</div><div class="info" id="xRateInfo">--</div></div>
+      <div class="stat" style="display:none"><div class="num" id="xNotRun">--</div><div class="info" id="xNotRunInfo">--</div></div>
     </div>
-    <div class="charts">
-      <div class="chart-box"><h3>Pass vs Fail</h3><div class="chart-area"><canvas id="donutChart"></canvas></div></div>
+    <!-- Platform Analytics (cross-env/platform) -->
+    <div class="analytics-section" id="analyticsSection" style="display:none">
+      <div class="analytics-head">
+        <div>
+          <div class="a-title">Platform Analytics</div>
+          <div class="a-sub" id="analyticsSub">Loading...</div>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card k-rate"><div class="kpi-lbl">Pass Rate</div><div class="kpi-val" id="kpiRate">--</div><div class="kpi-sub">Overall</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Total Tests</div><div class="kpi-val" id="kpiTotal">--</div><div class="kpi-sub">Executions</div></div>
+        <div class="kpi-card k-pass"><div class="kpi-lbl">Passed</div><div class="kpi-val" id="kpiPassed" style="color:#10b981">--</div><div class="kpi-sub">Successful</div></div>
+        <div class="kpi-card k-fail"><div class="kpi-lbl">Failed</div><div class="kpi-val" id="kpiFailed" style="color:#ef4444">--</div><div class="kpi-sub">Failures</div></div>
+        <div class="kpi-card k-dur"><div class="kpi-lbl">Avg Duration</div><div class="kpi-val" id="kpiDur">--</div><div class="kpi-sub">Per scenario</div></div>
+      </div>
+      <div class="charts-grid" id="chartsGrid">
+        <div class="chart-card"><h4>Pass Rate Trend (Versions)</h4><div class="chart-area-sm"><canvas id="trendChartA"></canvas></div></div>
+        <div class="chart-card"><h4>Pass vs Fail</h4><div class="chart-area-sm"><canvas id="pieChartA"></canvas></div></div>
+        <div class="chart-card" id="platformChartCard"><h4>iOS vs Android</h4><div class="chart-area-sm"><canvas id="platformChartA"></canvas></div></div>
+        <div class="chart-card" id="envChartCard"><h4>Staging vs Production</h4><div class="chart-area-sm"><canvas id="envChartA"></canvas></div></div>
+      </div>
+      <div class="insights">
+        <h4>Insights</h4>
+        <div id="insightsList"></div>
+      </div>
+    </div>
+
+    <div class="charts" style="grid-template-columns:1fr">
       <div class="chart-box"><h3>Pass Rate by Category</h3><div class="chart-area"><canvas id="catChart"></canvas></div></div>
     </div>
+
     <div id="categoryBlocks"><div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div></div>
+
+
+
+    <!-- Phase 2: Flaky Tests -->
+    <div id="flakySection" class="phase2-card" style="margin-top:20px;display:none">
+      <div class="p2-head">
+        <div>
+          <div class="p2-title">Flaky Tests <span class="p2-pill" id="flakyPctPill">0%</span></div>
+          <div class="p2-sub" id="flakySub">Tests with alternating pass/fail across versions</div>
+        </div>
+      </div>
+      <div id="flakyResult"></div>
+    </div>
+
+    <div id="reportPreview" style="margin-top:20px;display:none"></div>
+    <div id="attachments" style="margin-top:20px;display:none"></div>
   </div>
   <div id="pane-daily" style="display:none">
     <div class="chart-full"><h3>End-of-Day Pass Rate - Daily Trend</h3><div class="chart-area-tall"><canvas id="trendChart"></canvas></div></div>
@@ -293,6 +660,18 @@ async function init(){
     if(allVersions.length){
       latestKnownVersion=allVersions[0].version;
       await loadVersion(allVersions[0].version);
+      loadAnalytics();
+      populateCompareDropdowns();
+      loadFlaky();
+      // Auto-open comparison modal from shared link
+      const urlParams = new URLSearchParams(location.search);
+      const cV1 = urlParams.get('compareV1'), cV2 = urlParams.get('compareV2');
+      if (cV1 && cV2) {
+        openCompareModal();
+        document.getElementById('cmpV1').value = cV1;
+        document.getElementById('cmpV2').value = cV2;
+        setTimeout(runCompare, 200);
+      }
       document.getElementById('tc-daily').textContent=new Set(allVersions.map(v=>v.runDate)).size||'0';
       if(allVersions.length){
         const dates=allVersions.map(v=> typeof v.runDate === 'string' ? v.runDate.slice(0,10) : new Date(v.runDate).toISOString().slice(0,10)).sort();
@@ -318,46 +697,274 @@ async function loadVersion(version){
   document.getElementById('overallBadge').textContent='Loading...';
   try{
     const d=await api(`/${ENV}/${PLATFORM}/report/`+encodeURIComponent(version));
-    renderBuild(d.report,d.byCategory,version);
+    renderBuild(d, version);
+    renderAttachments(d.files || []);
+    loadAnalytics(version); // refresh insights for the selected version
+    // Root Cause + Visualizations load on-demand when their modals open
   }catch(e){showError(e.message)}
 }
 
-function renderBuild(R,byCategory,version){
-  const allSubs=R.flatMap(r=>r.subScenarios||[]);
-  const total=allSubs.length;
-  const passed=allSubs.filter(s=>s.overall==='Passed').length;
-  const failed=allSubs.filter(s=>s.overall==='Failed').length;
-  const slowSteps=R.reduce((a,r)=>a+(r.slowSteps||0),0);
-  const totalStp=R.reduce((a,r)=>a+(r.totalSteps||0),0);
-  const passedStp=R.reduce((a,r)=>a+(r.passedSteps||0),0);
-  const rate=total>0?((passed/total)*100).toFixed(1):0;
-  const notRun=Math.max(0,TOTAL_SCENARIOS-total);
+function renderAttachments(files) {
+  const el = document.getElementById('attachments');
+  const previewEl = document.getElementById('reportPreview');
+  if (!files.length) { el.style.display = 'none'; if (previewEl) previewEl.style.display = 'none'; return; }
 
-  const vMeta=allVersions.find(v=>v.version===version)||{};
-  const labelText = vMeta.label && vMeta.label !== version ? ` · ${vMeta.label}` : '';
-  document.getElementById('hdrMeta').textContent=(R[0]?.runStarted||'')+labelText+(vMeta.savedAt?' · Saved '+fmtDate(vMeta.savedAt)+' '+fmtTime(vMeta.savedAt):'');
-  const notesEl=document.getElementById('hdrNotes');
-  if(vMeta.notes){notesEl.textContent='Notes: '+vMeta.notes;notesEl.style.display='block';}else{notesEl.style.display='none';}
-  const ob=document.getElementById('overallBadge');
-  ob.className='overall-badge '+(failed>0?'badge-fail':'badge-pass');
-  ob.textContent=failed>0?'Overall: Failed':'Overall: Passed';
-  document.getElementById('buildMeta').textContent=vMeta.savedAt?`${fmtDate(vMeta.savedAt)} ${fmtTime(vMeta.savedAt)}`:'';
-  document.getElementById('xTotal').textContent=total;
-  document.getElementById('xTotalInfo').textContent=`${totalStp} steps · ${R.length} file(s)`;
-  document.getElementById('xPass').textContent=passed;
-  document.getElementById('xPassInfo').textContent=`${passedStp} steps passed`;
-  document.getElementById('xFail').textContent=failed;
-  document.getElementById('xFailInfo').textContent=`${totalStp-passedStp} steps failed`;
-  document.getElementById('xSlow').textContent=slowSteps;
-  const rEl=document.getElementById('xRate');
-  rEl.textContent=rate+'%';rEl.style.color=pc(rate);
-  document.getElementById('xRateInfo').textContent=`${passed} of ${total} scenarios`;
-  document.getElementById('xNotRun').textContent=notRun;
-  document.getElementById('xNotRunInfo').textContent=`of ${TOTAL_SCENARIOS} total`;
-  document.getElementById('tc-build').textContent=total;
-  renderDonut(passed,failed);
-  renderCatChart(byCategory);
-  renderCategories(byCategory,R);
+  const screenshots = files.filter(f => f.type === 'screenshot' && f.url);
+  const attachments = files.filter(f => f.type !== 'screenshot' && f.url);
+
+  if (previewEl) previewEl.style.display = 'none';
+
+  let html = `<div class="card" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden">
+    <div style="padding:14px 20px;background:#f8fafc;border-bottom:1px solid var(--border)">
+      <h3 style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px">Attachments (${files.length})</h3>
+    </div>
+    <div style="padding:16px 20px">`;
+
+  if (screenshots.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Screenshots (${screenshots.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px">`;
+    screenshots.forEach(f => {
+      html += `<a href="${f.url}" target="_blank" style="display:block;border:1px solid var(--border);border-radius:8px;overflow:hidden;text-decoration:none;transition:.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">
+        <img src="${f.url}" style="width:100%;height:120px;object-fit:cover;display:block" alt="${esc(f.originalName)}">
+        <div style="padding:6px 10px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.originalName)}</div>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  if (attachments.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Files (${attachments.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">`;
+    attachments.forEach(f => {
+      const ext = (f.originalName.split('.').pop() || '').toUpperCase();
+      const sizeKB = f.size ? (f.size / 1024).toFixed(1) + ' KB' : '';
+      html += `<a href="${f.url}" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);transition:.15s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+        <div style="width:36px;height:36px;background:#6366f1;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${ext}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.originalName)}</div>
+          <div style="font-size:11px;color:var(--muted)">${sizeKB}</div>
+        </div>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  html += '</div></div>';
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function renderBuild(data, version){
+  const scenarios = data.scenarios || [];
+  const categories = data.categories || [];
+  const stats = data.stats || {};
+  const meta = data.meta || {};
+
+  const total = stats.total || 0;
+  const passed = stats.passed || 0;
+  const failed = stats.failed || 0;
+  const rate = stats.passRate || 0;
+  const avgDur = stats.avgDuration || 0;
+  const notRun = Math.max(0, TOTAL_SCENARIOS - total);
+
+  const vMeta = allVersions.find(v => v.version === version) || {};
+  const labelText = meta.label && meta.label !== version ? ` · ${meta.label}` : '';
+  document.getElementById('hdrMeta').textContent = (meta.runDate ? fmtDate(meta.runDate) : '') + labelText + (meta.savedAt ? ' · Saved ' + fmtDate(meta.savedAt) + ' ' + fmtTime(meta.savedAt) : '');
+  const notesEl = document.getElementById('hdrNotes');
+  if (meta.notes) { notesEl.textContent = 'Notes: ' + meta.notes; notesEl.style.display = 'block'; }
+  else { notesEl.style.display = 'none'; }
+
+  const ob = document.getElementById('overallBadge');
+  ob.className = 'overall-badge ' + (failed > 0 ? 'badge-fail' : 'badge-pass');
+  ob.textContent = failed > 0 ? 'Overall: Failed' : 'Overall: Passed';
+  document.getElementById('buildMeta').textContent = vMeta.savedAt ? `${fmtDate(vMeta.savedAt)} ${fmtTime(vMeta.savedAt)}` : '';
+
+  // KPI cards
+  document.getElementById('xTotal').textContent = total;
+  document.getElementById('xTotalInfo').textContent = `Scenarios executed`;
+  document.getElementById('xPass').textContent = passed;
+  document.getElementById('xPassInfo').textContent = total > 0 ? `${((passed/total)*100).toFixed(1)}% of tests` : '';
+  document.getElementById('xFail').textContent = failed;
+  document.getElementById('xFailInfo').textContent = total > 0 ? `${((failed/total)*100).toFixed(1)}% of tests` : '';
+  document.getElementById('xSlow').textContent = avgDur + 's';
+  const rEl = document.getElementById('xRate');
+  rEl.textContent = rate + '%'; rEl.style.color = pc(rate);
+  document.getElementById('xRateInfo').textContent = `${passed} of ${total} scenarios`;
+  document.getElementById('xNotRun').textContent = notRun;
+  document.getElementById('xNotRunInfo').textContent = `of ${TOTAL_SCENARIOS} total`;
+  document.getElementById('tc-build').textContent = total;
+
+  renderCatChart(categories);
+  renderScenarioTable(scenarios);
+  // Update KPIs + donut with current report data
+  updateAnalyticsForReport(stats, meta);
+}
+
+// Update analytics KPIs + pie from the currently-viewed report
+function updateAnalyticsForReport(stats, meta) {
+  const s = stats || {};
+  document.getElementById('kpiRate').textContent = (s.passRate || 0) + '%';
+  document.getElementById('kpiRate').style.color = s.passRate >= 90 ? '#10b981' : s.passRate >= 70 ? '#f59e0b' : '#ef4444';
+  document.getElementById('kpiTotal').textContent = (s.total || 0).toLocaleString();
+  document.getElementById('kpiPassed').textContent = (s.passed || 0).toLocaleString();
+  document.getElementById('kpiFailed').textContent = (s.failed || 0).toLocaleString();
+  document.getElementById('kpiDur').textContent = (s.avgDuration || 0) + 's';
+
+  // Pass vs Fail donut — scoped to current report
+  if (pieChartA) pieChartA.destroy();
+  pieChartA = new Chart(document.getElementById('pieChartA'), {
+    type: 'doughnut',
+    data: { labels: ['Passed', 'Failed'], datasets: [{ data: [s.passed || 0, s.failed || 0], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { font: { size: 12, weight: 'bold' } } } } }
+  });
+
+  document.getElementById('analyticsSection').style.display = 'block';
+  document.getElementById('analyticsSub').textContent = `${ENV} · ${PLATFORM.toUpperCase()} · ${meta?.version || ''}`;
+}
+
+function renderScenarioTable(scenarios){
+  const container = document.getElementById('categoryBlocks');
+  if (!scenarios.length) {
+    container.innerHTML = '<div class="state-screen"><div class="icon">&#128196;</div><h2>No scenarios in this report</h2></div>';
+    return;
+  }
+
+  // Group by category
+  const groups = {};
+  for (const s of scenarios) {
+    const cat = s.category || 'Uncategorized';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(s);
+  }
+
+  // Sort categories: failed-heavy first, then alphabetical
+  const sortedCats = Object.keys(groups).sort((a, b) => {
+    const fA = groups[a].filter(s => s.overall === 'Failed').length;
+    const fB = groups[b].filter(s => s.overall === 'Failed').length;
+    if (fA !== fB) return fB - fA;
+    return a.localeCompare(b);
+  });
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3 style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.2px">Scenario Results (${scenarios.length})</h3>
+    <input id="scFilter" placeholder="Search scenario..." style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;min-width:220px" oninput="filterScenarios(this.value)">
+  </div>`;
+
+  for (const cat of sortedCats) {
+    const items = groups[cat];
+    const passed = items.filter(s => s.overall === 'Passed').length;
+    const failed = items.filter(s => s.overall === 'Failed').length;
+    const passRate = items.length > 0 ? ((passed / items.length) * 100).toFixed(1) : 0;
+    const catId = 'catg-' + cat.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const catColor = failed > 0 ? '#ef4444' : '#10b981';
+
+    html += `<div class="cat-card" data-category="${esc(cat)}" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:10px;overflow:hidden">
+      <div onclick="toggleCategory('${catId}')" style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;transition:.15s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="chev" id="chev-${catId}" style="font-size:12px;color:var(--muted);transition:.2s;display:inline-block">&#9654;</span>
+          <span style="font-size:14px;font-weight:700">${esc(cat)}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-weight:600">${items.length} scenarios</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;font-size:12px">
+          <span style="color:var(--pass);font-weight:700">${passed} passed</span>
+          <span style="color:${failed>0?'var(--fail)':'var(--muted)'};font-weight:700">${failed} failed</span>
+          <span style="font-size:13px;font-weight:800;color:${catColor};min-width:52px;text-align:right">${passRate}%</span>
+        </div>
+      </div>
+      <div id="${catId}" style="display:none">
+        <table class="sc-table"><thead><tr>
+          <th style="width:50px">#</th>
+          <th>Scenario Name</th>
+          <th style="width:100px">App</th>
+          <th>Validation</th>
+          <th style="width:90px">Status</th>
+          <th style="width:90px;text-align:right">Duration</th>
+        </tr></thead><tbody>`;
+
+    items.forEach((s, i) => {
+      const statusCls = s.overall === 'Passed' ? 'badge-pass' : 'badge-fail';
+      const rowStyle = s.overall === 'Failed' ? 'background:rgba(239,68,68,.03)' : '';
+      const durText = typeof s.duration === 'number' ? s.duration.toFixed(2) + 's' : '--';
+      const appText = s.app || '—';
+      const validation = s.validationSummary || '';
+      const validationShort = validation.length > 120 ? validation.slice(0, 120) + '...' : validation;
+      html += `<tr class="sc-row" style="${rowStyle}">
+        <td style="color:var(--muted);font-family:monospace">${i + 1}</td>
+        <td style="font-weight:500">${esc(s.name)}</td>
+        <td style="color:var(--muted);font-size:12px">${esc(appText)}</td>
+        <td style="font-size:11px;color:var(--text);line-height:1.5;max-width:420px" title="${esc(validation)}">${esc(validationShort) || '<span style="color:var(--muted)">—</span>'}</td>
+        <td><span class="badge ${statusCls}">${s.overall}</span></td>
+        <td style="text-align:right;font-family:monospace;color:var(--muted)">${durText}</td>
+      </tr>`;
+
+      // Show failure details if any
+      if (s.overall === 'Failed' && s.failed && s.failed.length > 0) {
+        for (const f of s.failed) {
+          const stepName = f.name || '';
+          const shortName = stepName.length > 200 ? stepName.slice(0, 200) + '...' : stepName;
+          html += `<tr class="fail-row">
+            <td></td>
+            <td colspan="4" style="padding:6px 16px 6px 32px;font-size:11px;color:#991b1b;background:#fef2f2">
+              <strong>Failed reason:</strong> ${esc(shortName)}
+            </td>
+            <td style="text-align:right;background:#fef2f2"></td>
+          </tr>`;
+        }
+      }
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  container.innerHTML = html;
+
+  // Auto-open categories with failures
+  for (const cat of sortedCats) {
+    const items = groups[cat];
+    const failed = items.filter(s => s.overall === 'Failed').length;
+    if (failed > 0) {
+      const catId = 'catg-' + cat.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      toggleCategory(catId, true);
+    }
+  }
+}
+
+function togglePreview(id, forceOpen) {
+  const body = document.getElementById(id);
+  const chev = document.getElementById('pchev-' + id);
+  if (!body) return;
+  const isOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  body.style.display = isOpen ? 'block' : 'none';
+  if (chev) chev.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+function toggleCategory(catId, forceOpen) {
+  const body = document.getElementById(catId);
+  const chev = document.getElementById('chev-' + catId);
+  if (!body) return;
+  const isOpen = forceOpen !== undefined ? forceOpen : body.style.display === 'none';
+  body.style.display = isOpen ? 'block' : 'none';
+  if (chev) chev.style.transform = isOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+function filterScenarios(q){
+  const query = (q || '').toLowerCase().trim();
+  const catCards = document.querySelectorAll('.cat-card');
+  catCards.forEach(card => {
+    const rows = card.querySelectorAll('tbody tr');
+    let anyVisible = false;
+    rows.forEach(r => {
+      const text = r.textContent.toLowerCase();
+      const visible = !query || text.includes(query);
+      r.style.display = visible ? '' : 'none';
+      if (visible) anyVisible = true;
+    });
+    card.style.display = !query || anyVisible ? '' : 'none';
+    // Auto-expand when searching
+    if (query && anyVisible) {
+      const body = card.querySelector('[id^="catg-"]');
+      if (body) body.style.display = 'block';
+    }
+  });
 }
 
 function renderDonut(p,f){
@@ -367,17 +974,28 @@ function renderDonut(p,f){
     options:{cutout:'65%',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:12,weight:'bold'}}}}}
   });
 }
-function renderCatChart(byCategory){
+function renderCatChart(categories){
   if(catChart){catChart.destroy();catChart=null}
-  const cats=byCategory.filter(c=>c.run>0).sort((a,b)=>a.categoryId-b.categoryId);
-  const h=Math.max(260,cats.length*32+60);
-  document.querySelector('.chart-area').style.height=h+'px';
-  catChart=new Chart(document.getElementById('catChart'),{
-    type:'bar',data:{labels:cats.map(c=>c.categoryName.length>24?c.categoryName.slice(0,24)+'...':c.categoryName),
-      datasets:[{label:'Pass Rate %',data:cats.map(c=>c.passRate||0),backgroundColor:cats.map(c=>c.passRate>=90?'#10b981':c.passRate>=70?'#f59e0b':'#ef4444'),borderRadius:3}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw.toFixed(1)+'%'}}},
-      scales:{x:{min:0,max:100,grid:{color:'#f1f5f9'},ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}}}
+  const cats = (categories || []).filter(c => c.total > 0).sort((a, b) => b.total - a.total);
+  if (!cats.length) return;
+  const h = Math.max(260, cats.length * 32 + 60);
+  document.querySelector('.chart-area').style.height = h + 'px';
+  catChart = new Chart(document.getElementById('catChart'), {
+    type: 'bar',
+    data: {
+      labels: cats.map(c => c.category.length > 24 ? c.category.slice(0, 24) + '...' : c.category),
+      datasets: [{
+        label: 'Pass Rate %',
+        data: cats.map(c => c.passRate || 0),
+        backgroundColor: cats.map(c => c.passRate >= 90 ? '#10b981' : c.passRate >= 70 ? '#f59e0b' : '#ef4444'),
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.raw.toFixed(1) + '%' } } },
+      scales: { x: { min: 0, max: 100, grid: { color: '#f1f5f9' }, ticks: { callback: v => v + '%' } }, y: { grid: { display: false } } }
+    }
   });
 }
 function renderTrend(days){
@@ -395,50 +1013,7 @@ function renderTrend(days){
   });
 }
 
-function renderCategories(byCategory,R){
-  const sorted=[...byCategory].sort((a,b)=>{if(a.categoryId===0)return 1;if(b.categoryId===0)return-1;return a.categoryId-b.categoryId});
-  let html='<div>';
-  for(const cat of sorted){
-    const pct=cat.passRate!==null?cat.passRate:0;
-    const uid='cat-'+cat.categoryId;
-    const label=cat.categoryId>0?`${cat.categoryId}. ${cat.categoryName}`:cat.categoryName;
-    const notRunCount=cat.notRun||0;
-    html+=`<div class="cat-block">
-      <div class="cat-header" onclick="toggleCat('${uid}')">
-        <span class="cat-name">${esc(label)}${notRunCount>0?`<span class="nr-badge">${notRunCount} not run</span>`:''}</span>
-        <div class="cat-right">
-          <span class="cat-mini"><strong>${cat.passed}</strong> passed &nbsp;<strong style="color:${cat.failed>0?'var(--fail)':'var(--muted)'}">${cat.failed}</strong> failed &nbsp;<strong style="color:var(--muted)">${cat.run}</strong>/${cat.masterTotal} run</span>
-          <div class="cat-bar-wrap"><div class="cat-bar">${cat.run>0?`<div class="cat-bar-fill" style="width:${pct}%;background:${pc(pct)}"></div>`:''}</div>
-            <span class="cat-pct" style="color:${cat.run>0?pc(pct):'var(--muted)'}">${cat.run>0?pct+'%':'--'}</span></div>
-          <span class="cat-chevron" id="chev-${uid}">&#9662;</span></div></div>
-      <div class="cat-body" id="${uid}">
-        <table class="sc-table"><thead><tr><th style="width:50px">ID</th><th>Scenario</th><th style="width:60px">Steps</th><th style="width:60px">Failed</th><th style="width:60px">Slow</th><th style="width:110px">Pass Rate</th><th style="width:80px">Result</th></tr></thead><tbody>`;
-    for(const sub of cat.subScenarios||[]){
-      const sPct=sub.totalSteps>0?((sub.passedSteps/sub.totalSteps)*100).toFixed(1):100;
-      const cls=sub.overall==='Passed'?'badge-pass':'badge-fail';
-      html+=`<tr class="sc-row"><td><span class="sc-id">${esc(sub.scenarioId||'--')}</span></td><td>${esc(sub.name)}</td><td>${sub.totalSteps}</td>
-        <td class="${sub.failedSteps>0?'fc':''}">${sub.failedSteps>0?sub.failedSteps:'--'}</td>
-        <td class="${sub.slowSteps>0?'sc':''}">${sub.slowSteps>0?sub.slowSteps:'--'}</td>
-        <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:${sPct}%;background:${pc(sPct)}"></div></div><span class="bar-pct">${sPct}%</span></div></td>
-        <td><span class="badge ${cls}">${sub.overall}</span></td></tr>`;
-      (sub.failed||[]).forEach(f=>{
-        html+=`<tr class="fail-row"><td></td><td colspan="4"><span class="fail-sn">Step ${f.step}:</span>${esc(shortStep(f.name))}</td>
-          <td><span class="time-pill">${f.time.toFixed(1)}s</span></td><td><span class="badge badge-fail">Failed</span></td></tr>`;
-      });
-    }
-    html+=`</tbody></table></div></div>`;
-  }
-  html+='</div>';
-  document.getElementById('categoryBlocks').innerHTML=html;
-  sorted.filter(c=>c.run>0).slice(0,3).forEach(c=>toggleCat('cat-'+c.categoryId,true));
-}
-
-function toggleCat(uid,forceOpen){
-  const body=document.getElementById(uid);const chev=document.getElementById('chev-'+uid);
-  if(!body)return;
-  const open=forceOpen!==undefined?forceOpen:!body.classList.contains('open');
-  body.classList.toggle('open',open);if(chev)chev.classList.toggle('open',open);
-}
+// Category rendering replaced by renderScenarioTable (clean single-level table)
 
 async function loadDaily(){
   document.getElementById('dayTable').innerHTML='<div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div>';
@@ -494,6 +1069,999 @@ function exportRangeCSV(){
   if(p.length)url+='?'+p.join('&');exportDownload(url);
 }
 
+// ── Platform Analytics (cross env/platform) ───────────────────────────────────
+let trendChartA = null, pieChartA = null, platformChartA = null, envChartA = null;
+
+// ── Phase 2: Compare Versions ────────────────────────────────────────────────
+function populateCompareDropdowns() {
+  const v1 = document.getElementById('cmpV1');
+  const v2 = document.getElementById('cmpV2');
+  if (!v1 || !v2) return;
+  v1.innerHTML = ''; v2.innerHTML = '';
+  allVersions.forEach((v) => {
+    v1.add(new Option(v.label || v.version, v.version));
+    v2.add(new Option(v.label || v.version, v.version));
+  });
+  // Default: v1 = previous, v2 = latest
+  if (allVersions.length >= 2) {
+    v1.value = allVersions[1].version;
+    v2.value = allVersions[0].version;
+  } else if (allVersions.length === 1) {
+    v1.value = allVersions[0].version;
+    v2.value = allVersions[0].version;
+  }
+}
+
+async function runCompare() {
+  const v1 = document.getElementById('cmpV1').value;
+  const v2 = document.getElementById('cmpV2').value;
+  const out = document.getElementById('compareResult');
+  if (!v1 || !v2) { out.innerHTML = '<div style="color:var(--muted);font-size:12px">Select two versions to compare.</div>'; return; }
+  if (v1 === v2) { out.innerHTML = '<div style="color:var(--muted);font-size:12px">Pick two different versions.</div>'; return; }
+  out.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch(`/api/dashboard/compare?env=${ENV}&platform=${PLATFORM}&v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Compare failed'); }
+    const d = await res.json();
+    renderCompare(d);
+  } catch (e) {
+    out.innerHTML = `<div style="color:var(--fail);font-size:12px;padding:10px">${esc(e.message)}</div>`;
+  }
+}
+
+// Store last comparison for filtering
+let lastCompareData = null;
+let currentSevFilter = 'all';
+
+function renderCompare(d) {
+  lastCompareData = d;
+  const s = d.summary;
+  const v = s.verdict || {};
+  const diff = s.passRateDiff;
+  const hDiff = s.healthScoreDiff;
+
+  // VERDICT BANNER
+  const icon = v.level === 'good' ? '&#10003;' : v.level === 'critical' ? '&#9888;' : v.level === 'mixed' ? '&#9881;' : v.level === 'warning' ? '&#9888;' : '&#9679;';
+  let html = `<div class="verdict-banner ${v.level}">
+    <div class="verdict-icon">${icon}</div>
+    <div class="verdict-content">
+      <div class="verdict-title">${esc(v.title || 'Comparison')}</div>
+      <div class="verdict-msg">${esc(v.message || '')}</div>
+    </div>
+    <div class="verdict-action ${v.level}">${esc(v.action || '')}</div>
+  </div>`;
+
+  // DIFF TIMELINE (all versions shown; click any two to compare)
+  html += renderDiffTimeline(s.v1.version, s.v2.version);
+
+  // VERSION NOTES (if either version has notes)
+  const notes = [];
+  if (s.v1.notes) notes.push(`<strong>${esc(s.v1.version)}:</strong> ${esc(s.v1.notes)}`);
+  if (s.v2.notes) notes.push(`<strong>${esc(s.v2.version)}:</strong> ${esc(s.v2.notes)}`);
+  if (notes.length) {
+    html += `<div class="version-notes"><div class="vn-title">&#9998; Notes:</div><div class="vn-body">${notes.join(' · ')}</div></div>`;
+  }
+
+  // BEFORE/AFTER MORPH SLIDER
+  html += `<div class="morph-slider">
+    <div class="morph-head">
+      <span class="morph-label">Drag to morph from ${esc(s.v1.version)} to ${esc(s.v2.version)}</span>
+      <span class="morph-value" id="morphPct">50%</span>
+    </div>
+    <div class="morph-bar">
+      <div class="morph-stat" id="morphPass"><span class="prefix">Pass Rate</span>--%</div>
+    </div>
+    <input type="range" min="0" max="100" value="50" class="morph-range" id="morphRange"
+      data-v1p="${s.v1.passRate || 0}" data-v2p="${s.v2.passRate || 0}"
+      data-v1f="${s.v1.failed || 0}" data-v2f="${s.v2.failed || 0}"
+      data-v1pa="${s.v1.passed || 0}" data-v2pa="${s.v2.passed || 0}"
+      oninput="updateMorph(this)">
+  </div>`;
+
+  // SHARE ROW
+  html += `<div class="share-row">
+    <button class="share-btn" onclick="copyCompareSummary()">&#128203; Copy Summary</button>
+    <button class="share-btn slack" onclick="copyCompareSummary('slack')">&#128172; Slack-ready Text</button>
+    <button class="share-btn" onclick="shareCompareLink()">&#128279; Copy Link</button>
+  </div>`;
+
+  // SIDE-BY-SIDE HEALTH SCORES with mini donuts
+  const v1HealthCls = s.v1.healthScore >= 80 ? '' : s.v1.healthScore >= 60 ? 'medium' : 'low';
+  const v2HealthCls = s.v2.healthScore >= 80 ? '' : s.v2.healthScore >= 60 ? 'medium' : 'low';
+  const arrowCls = hDiff > 0 ? 'up' : hDiff < 0 ? 'down' : '';
+  const arrowSym = hDiff > 0 ? '&#8593;' : hDiff < 0 ? '&#8595;' : '&#8594;';
+
+  html += `<div class="health-grid">
+    <div class="health-card">
+      <div class="vlabel">Version 1</div>
+      <div class="vname">${esc(s.v1.version)}</div>
+      ${miniDonut(s.v1.passed, s.v1.failed, '#3b82f6')}
+      <div class="health-row"><span class="lbl">Pass Rate</span><span class="val">${s.v1.passRate != null ? s.v1.passRate + '%' : '--'}</span></div>
+      <div class="health-row"><span class="lbl">Passed</span><span class="val" style="color:#10b981">${s.v1.passed}</span></div>
+      <div class="health-row"><span class="lbl">Failed</span><span class="val" style="color:#ef4444">${s.v1.failed}</span></div>
+      <div class="health-score">
+        <div class="health-score-bar"><div class="health-score-fill ${v1HealthCls}" style="width:${s.v1.healthScore}%"></div></div>
+        <div class="health-score-num">${s.v1.healthScore}</div>
+      </div>
+    </div>
+    <div class="health-arrow ${arrowCls}">${arrowSym}</div>
+    <div class="health-card">
+      <div class="vlabel">Version 2</div>
+      <div class="vname">${esc(s.v2.version)}</div>
+      ${miniDonut(s.v2.passed, s.v2.failed, '#10b981')}
+      <div class="health-row"><span class="lbl">Pass Rate</span><span class="val">${s.v2.passRate != null ? s.v2.passRate + '%' : '--'}</span></div>
+      <div class="health-row"><span class="lbl">Passed</span><span class="val" style="color:#10b981">${s.v2.passed}</span></div>
+      <div class="health-row"><span class="lbl">Failed</span><span class="val" style="color:#ef4444">${s.v2.failed}</span></div>
+      <div class="health-score">
+        <div class="health-score-bar"><div class="health-score-fill ${v2HealthCls}" style="width:${s.v2.healthScore}%"></div></div>
+        <div class="health-score-num">${s.v2.healthScore}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // KPI summary cards (animated)
+  const diffStr = diff > 0 ? `<span style="color:var(--pass)">+${diff}%</span>` : diff < 0 ? `<span style="color:var(--fail)">${diff}%</span>` : `<span style="color:var(--muted)">--</span>`;
+  html += `<div class="cmp-kpi">
+    <div class="cmp-card improved"><div class="cmp-lbl">Improved</div><div class="cmp-val animate-num" style="color:#10b981" data-target="${s.improved}">0</div></div>
+    <div class="cmp-card regressed"><div class="cmp-lbl">Regressed</div><div class="cmp-val animate-num" style="color:#ef4444" data-target="${s.regressed}">0</div></div>
+    <div class="cmp-card stable"><div class="cmp-lbl">Still Failing</div><div class="cmp-val animate-num" style="color:#f59e0b" data-target="${s.stillFailing}">0</div></div>
+    <div class="cmp-card diff"><div class="cmp-lbl">Pass Rate Δ</div><div class="cmp-val">${diffStr}</div></div>
+  </div>`;
+
+  html += `<div style="font-size:11px;color:var(--muted);margin:6px 0 14px">Total compared: <strong>${s.totalCompared}</strong> · New: ${s.newTests} · Removed: ${s.removedTests}</div>`;
+
+  // CATEGORY HEATMAP
+  if (d.categoryBreakdown && d.categoryBreakdown.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px">Category Heatmap</div><div class="heatmap">`;
+    for (const c of d.categoryBreakdown.slice(0, 12)) {
+      const cls = c.regressed > 0 ? 'bad' : c.improved > 0 ? 'good' : 'neutral';
+      html += `<div class="heat-cell ${cls}">
+        <div class="heat-cat" title="${esc(c.name)}">${esc(c.name)}</div>
+        <div class="heat-stats">
+          ${c.improved > 0 ? `<span class="h-imp">&#9650; ${c.improved}</span>` : ''}
+          ${c.regressed > 0 ? `<span class="h-reg">&#9660; ${c.regressed}</span>` : ''}
+          ${c.stillFailing > 0 ? `<span class="h-stl">&#9888; ${c.stillFailing}</span>` : ''}
+          ${c.improved === 0 && c.regressed === 0 && c.stillFailing === 0 ? `<span style="color:var(--muted)">${c.stable} stable</span>` : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // SEVERITY FILTER TABS
+  const counts = {
+    all: d.details.length,
+    regressed: s.regressed,
+    improved: s.improved,
+    stillFailing: s.stillFailing,
+    new: s.newTests,
+    removed: s.removedTests,
+  };
+  html += `<div class="sev-tabs">
+    <button class="sev-tab ${currentSevFilter==='all'?'active':''}" onclick="filterSev('all')">All <span class="count">${counts.all}</span></button>
+    <button class="sev-tab regressed ${currentSevFilter==='regressed'?'active':''}" onclick="filterSev('regressed')">Regressions <span class="count">${counts.regressed}</span></button>
+    <button class="sev-tab improved ${currentSevFilter==='improved'?'active':''}" onclick="filterSev('improved')">Fixes <span class="count">${counts.improved}</span></button>
+    <button class="sev-tab stillFailing ${currentSevFilter==='stillFailing'?'active':''}" onclick="filterSev('stillFailing')">Still Failing <span class="count">${counts.stillFailing}</span></button>
+    <button class="sev-tab new ${currentSevFilter==='new'?'active':''}" onclick="filterSev('new')">New <span class="count">${counts.new}</span></button>
+  </div>`;
+
+  // FILTERED TABLE
+  const filtered = currentSevFilter === 'all'
+    ? d.details.filter(x => x.changeType !== 'stable')
+    : d.details.filter(x => x.changeType === currentSevFilter);
+  const visible = filtered.length > 0 ? filtered : d.details;
+
+  html += `<table class="cmp-table"><thead><tr>
+    <th>Scenario</th><th style="width:120px">Category</th><th style="width:90px">Stability</th><th style="width:75px">${esc(s.v1.version)}</th><th style="width:75px">${esc(s.v2.version)}</th><th style="width:130px">Change</th>
+  </tr></thead><tbody>`;
+  for (const r of visible.slice(0, 100)) {
+    const trendArrow = r.changeType === 'improved' ? '<span class="trend-arrow up">&#8593;</span>' :
+                       r.changeType === 'regressed' ? '<span class="trend-arrow down">&#8595;</span>' :
+                       r.changeType === 'stillFailing' ? '<span class="trend-arrow flat">&#8594;</span>' : '';
+    // Stability pips (◆◆◆◇◇)
+    const stab = r.stability;
+    let stabHtml = '<span style="color:var(--muted);font-size:10px">—</span>';
+    if (stab != null && r.stabilityRuns >= 2) {
+      const filled = Math.round(stab / 20);
+      let pips = '';
+      for (let i = 0; i < 5; i++) pips += `<span class="pip ${i < filled ? '' : 'off'}">&#9670;</span>`;
+      stabHtml = `<span class="stab-pips" title="${stab}% stable across ${r.stabilityRuns} runs">${pips}</span>`;
+    }
+    html += `<tr>
+      <td style="font-weight:500">${esc(r.name)}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(r.category)}</td>
+      <td>${stabHtml}</td>
+      <td>${r.v1Status ? `<span class="badge ${r.v1Status==='Passed'?'badge-pass':'badge-fail'}">${r.v1Status}</span>` : '<span style="color:var(--muted)">--</span>'}</td>
+      <td>${r.v2Status ? `<span class="badge ${r.v2Status==='Passed'?'badge-pass':'badge-fail'}">${r.v2Status}</span>` : '<span style="color:var(--muted)">--</span>'}</td>
+      <td>${trendArrow} <span class="cmp-tag ${r.changeType}">${r.changeType.replace(/([A-Z])/g, ' $1').trim()}</span></td>
+    </tr>`;
+    // Failure reason diff for regressed or stillFailing
+    if ((r.changeType === 'regressed' || r.changeType === 'stillFailing') && (r.v1Failure || r.v2Failure)) {
+      const sameTxt = r.sameFailure ? '<strong>Same failure as before:</strong> ' : '<strong>New failure:</strong> ';
+      html += `<tr><td colspan="6" style="padding:0 14px 8px"><div class="fail-diff ${r.sameFailure?'same':''}">${sameTxt}${esc((r.v2Failure || r.v1Failure || '').slice(0, 280))}</div></td></tr>`;
+    }
+  }
+  html += '</tbody></table>';
+  if (visible.length > 100) html += `<div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Showing 100 of ${visible.length}</div>`;
+
+  document.getElementById('compareResult').innerHTML = html;
+  document.getElementById('cmpExportBtn').style.display = '';
+
+  // Animate counters + init morph
+  setTimeout(() => {
+    animateCounters();
+    const mr = document.getElementById('morphRange');
+    if (mr) { updateMorph(mr); }
+  }, 50);
+}
+
+function renderDiffTimeline(selV1, selV2) {
+  if (!allVersions || allVersions.length < 2) return '';
+  // allVersions is newest→oldest; reverse for chronological left→right
+  const vers = [...allVersions].reverse();
+  let dots = '';
+  for (const v of vers) {
+    const pr = v.passRate || 0;
+    const cls = pr >= 90 ? 'high' : pr >= 70 ? 'med' : 'low';
+    const selCls = v.version === selV1 ? 'sel-v1' : v.version === selV2 ? 'sel-v2' : '';
+    dots += `<div class="dt-dot ${cls} ${selCls}" onclick="pickTimelineVersion('${esc(v.version)}')" title="${esc(v.version)}">
+      <div class="dt-dot-tip">${esc(v.version)} · ${pr}%</div>
+    </div>`;
+  }
+  return `<div class="diff-timeline">
+    <div class="dt-label"><span>Version Timeline</span><span class="dt-hint">Click any two dots to compare · ${vers.length} versions</span></div>
+    <div class="dt-track">
+      <div class="dt-line"></div>
+      <div class="dt-dots">${dots}</div>
+    </div>
+    <div class="dt-tip-hint">Blue = v1 · Green = v2 · Click to swap</div>
+  </div>`;
+}
+
+let timelineClickPhase = 'v1'; // next click fills v1 or v2
+function pickTimelineVersion(ver) {
+  const v1El = document.getElementById('cmpV1');
+  const v2El = document.getElementById('cmpV2');
+  if (!v1El || !v2El) return;
+  if (timelineClickPhase === 'v1') { v1El.value = ver; timelineClickPhase = 'v2'; }
+  else { v2El.value = ver; timelineClickPhase = 'v1'; }
+  if (v1El.value && v2El.value && v1El.value !== v2El.value) runCompare();
+}
+
+function updateMorph(el) {
+  const pct = parseInt(el.value);
+  el.style.setProperty('--pct', pct + '%');
+  document.getElementById('morphPct').textContent = pct + '%';
+  const v1p = parseFloat(el.dataset.v1p) || 0;
+  const v2p = parseFloat(el.dataset.v2p) || 0;
+  const morphed = (v1p + (v2p - v1p) * (pct / 100)).toFixed(1);
+  const stat = document.getElementById('morphPass');
+  stat.innerHTML = `<span class="prefix">Pass Rate</span>${morphed}%`;
+  stat.style.color = morphed >= 90 ? '#10b981' : morphed >= 70 ? '#f59e0b' : '#ef4444';
+}
+
+function copyCompareSummary(mode) {
+  if (!lastCompareData) return;
+  const s = lastCompareData.summary;
+  const v = s.verdict;
+  let text;
+  if (mode === 'slack') {
+    text = `*QA Report: ${ENV}/${PLATFORM}* — ${s.v1.version} vs ${s.v2.version}\n` +
+      `:${v.level === 'good' ? 'white_check_mark' : v.level === 'critical' ? 'warning' : 'information_source'}: *${v.title}* — ${v.message}\n` +
+      `• Pass rate: ${s.v1.passRate || 0}% → ${s.v2.passRate || 0}% (${s.passRateDiff >= 0 ? '+' : ''}${s.passRateDiff}%)\n` +
+      `• Health score: ${s.v1.healthScore} → ${s.v2.healthScore}\n` +
+      `• Fixed: ${s.improved} · Regressed: ${s.regressed} · Still failing: ${s.stillFailing}`;
+  } else {
+    text = `${ENV}/${PLATFORM} — ${s.v1.version} vs ${s.v2.version}\n` +
+      `Verdict: ${v.title} — ${v.message}\n` +
+      `Pass rate: ${s.v1.passRate}% → ${s.v2.passRate}% (${s.passRateDiff >= 0 ? '+' : ''}${s.passRateDiff}%)\n` +
+      `Health: ${s.v1.healthScore} → ${s.v2.healthScore}\n` +
+      `Improved: ${s.improved}, Regressed: ${s.regressed}, Still Failing: ${s.stillFailing}`;
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Summary copied to clipboard' + (mode === 'slack' ? ' (Slack format)' : ''));
+  });
+}
+
+function shareCompareLink() {
+  const v1 = document.getElementById('cmpV1').value;
+  const v2 = document.getElementById('cmpV2').value;
+  if (!v1 || !v2) return;
+  const url = `${location.origin}/dashboard/report.html?env=${ENV}&platform=${PLATFORM}&compareV1=${encodeURIComponent(v1)}&compareV2=${encodeURIComponent(v2)}`;
+  navigator.clipboard.writeText(url).then(() => alert('Shareable link copied to clipboard'));
+}
+
+function miniDonut(passed, failed, color) {
+  const total = passed + failed;
+  const pct = total > 0 ? (passed / total) * 100 : 0;
+  const r = 32, c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  return `<div class="mini-donut">
+    <svg width="80" height="80">
+      <circle cx="40" cy="40" r="${r}" fill="none" stroke="#fee2e2" stroke-width="8"/>
+      <circle cx="40" cy="40" r="${r}" fill="none" stroke="#10b981" stroke-width="8"
+        stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+    </svg>
+    <div class="mini-donut-text">${pct.toFixed(0)}%</div>
+  </div>`;
+}
+
+function animateCounters() {
+  document.querySelectorAll('.animate-num').forEach(el => {
+    const target = parseInt(el.dataset.target || '0');
+    const duration = 600;
+    const start = performance.now();
+    function step(t) {
+      const elapsed = t - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(target * eased);
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function filterSev(type) {
+  currentSevFilter = type;
+  if (lastCompareData) renderCompare(lastCompareData);
+}
+
+function quickCompare(mode) {
+  if (!allVersions.length) return;
+  const v1Sel = document.getElementById('cmpV1');
+  const v2Sel = document.getElementById('cmpV2');
+  if (mode === 'latest-prev' && allVersions.length >= 2) {
+    v1Sel.value = allVersions[1].version;
+    v2Sel.value = allVersions[0].version;
+  } else if (mode === 'first-latest' && allVersions.length >= 2) {
+    v1Sel.value = allVersions[allVersions.length - 1].version;
+    v2Sel.value = allVersions[0].version;
+  } else if (mode === 'week') {
+    // Latest vs version from ~7 days ago
+    const latest = allVersions[0];
+    const latestDate = new Date(latest.savedAt);
+    const target = new Date(latestDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    let closest = allVersions[allVersions.length - 1];
+    let minDiff = Infinity;
+    for (const v of allVersions) {
+      const d = Math.abs(new Date(v.savedAt) - target);
+      if (d < minDiff) { minDiff = d; closest = v; }
+    }
+    v1Sel.value = closest.version;
+    v2Sel.value = latest.version;
+  } else if (mode === 'latest-stable') {
+    // Find a "stable" past version (passRate >= 90%)
+    const latest = allVersions[0];
+    const stable = allVersions.find(v => v.version !== latest.version && (v.passRate || 0) >= 90);
+    if (stable) {
+      v1Sel.value = stable.version;
+      v2Sel.value = latest.version;
+    } else {
+      v1Sel.value = allVersions[allVersions.length - 1].version;
+      v2Sel.value = latest.version;
+    }
+  }
+  runCompare();
+}
+
+function exportCompare() {
+  const v1 = document.getElementById('cmpV1').value;
+  const v2 = document.getElementById('cmpV2').value;
+  if (!v1 || !v2) return;
+  const url = `/api/dashboard/compare/export?env=${ENV}&platform=${PLATFORM}&v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}`;
+  fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+    .then(r => r.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `comparison-${ENV}-${PLATFORM}-${v1}-vs-${v2}.csv`;
+      a.click();
+    });
+}
+
+// ── Phase 3 Tier 4: Advanced Visualizations ──────────────────────────────────
+let vizLoadedForVersion = null;
+
+async function loadVisualizations(version) {
+  const v = version || document.getElementById('versionSelect')?.value;
+  if (!v) return;
+  if (vizLoadedForVersion === v) return;
+  vizLoadedForVersion = v;
+
+  const sec = document.getElementById('vizSection');
+  if (!sec) return;
+  sec.style.display = 'block';
+
+  // Sankey — needs current + previous version
+  renderSankey(v);
+  // Calendar — needs all versions
+  renderCalendarHeatmap();
+  // Treemap — needs current report scenarios
+  renderTreemap();
+  // Step flow — needs current report with failed steps
+  renderStepFlow();
+}
+
+function switchVizTab(tab) {
+  document.querySelectorAll('.rc-tab[data-viz]').forEach(t => t.classList.toggle('active', t.dataset.viz === tab));
+  ['sankey', 'calendar', 'treemap', 'stepflow'].forEach(t => {
+    const el = document.getElementById('viz-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── 13. Sankey Diagram ───────────────────────────────────────────────────────
+async function renderSankey(currentVer) {
+  const el = document.getElementById('viz-sankey');
+  if (!el) return;
+  // Need at least 2 versions
+  if (!allVersions || allVersions.length < 2) {
+    el.innerHTML = '<div class="rc-empty">Need at least 2 versions to show flow diagram.</div>';
+    return;
+  }
+  // Find previous version
+  const currentIdx = allVersions.findIndex(v => v.version === currentVer);
+  const prevVer = currentIdx >= 0 && currentIdx + 1 < allVersions.length ? allVersions[currentIdx + 1].version : allVersions[1].version;
+
+  try {
+    const res = await fetch(`/api/dashboard/compare?env=${ENV}&platform=${PLATFORM}&v1=${encodeURIComponent(prevVer)}&v2=${encodeURIComponent(currentVer)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) { el.innerHTML = '<div class="rc-empty">Unable to generate flow diagram.</div>'; return; }
+    const d = await res.json();
+    const s = d.summary;
+
+    const W = 800, H = 420, M = 80;
+    const leftX = M, rightX = W - M, nodeW = 20;
+    const leftTotalH = H - 60;
+    const rightTotalH = H - 60;
+    const totalLeft = s.stable + s.regressed + s.removedTests + (s.improved + s.stillFailing);
+    const totalRight = s.stable + s.improved + s.newTests + (s.regressed + s.stillFailing);
+    if (totalLeft === 0 || totalRight === 0) {
+      el.innerHTML = '<div class="rc-empty">No comparable data.</div>';
+      return;
+    }
+
+    const leftPassed = s.stable + s.regressed;   // tests that were Passed in v1
+    const leftFailed = s.improved + s.stillFailing; // tests that were Failed in v1
+    const leftRemoved = s.removedTests;
+
+    const rightPassed = s.stable + s.improved;
+    const rightFailed = s.regressed + s.stillFailing;
+    const rightNew = s.newTests;
+
+    // Scale
+    const leftSum = leftPassed + leftFailed + leftRemoved;
+    const rightSum = rightPassed + rightFailed + rightNew;
+    const scaleL = leftTotalH / leftSum;
+    const scaleR = rightTotalH / rightSum;
+
+    // Y positions for left nodes (cumulative)
+    const gap = 6;
+    const leftNodes = [
+      { key: 'lpass', label: 'Passed', count: leftPassed, color: '#10b981' },
+      { key: 'lfail', label: 'Failed', count: leftFailed, color: '#ef4444' },
+      { key: 'lrm', label: 'Removed', count: leftRemoved, color: '#a78bfa' },
+    ].filter(n => n.count > 0);
+    let lY = 30;
+    leftNodes.forEach(n => { n.y = lY; n.h = n.count * scaleL; lY += n.h + gap; });
+
+    const rightNodes = [
+      { key: 'rpass', label: 'Passed', count: rightPassed, color: '#10b981' },
+      { key: 'rfail', label: 'Failed', count: rightFailed, color: '#ef4444' },
+      { key: 'rnew', label: 'New', count: rightNew, color: '#3b82f6' },
+    ].filter(n => n.count > 0);
+    let rY = 30;
+    rightNodes.forEach(n => { n.y = rY; n.h = n.count * scaleR; rY += n.h + gap; });
+
+    // Flows — each source has offset within source node
+    const flowDefs = [
+      { from: 'lpass', to: 'rpass', count: s.stable, color: '#10b981', label: 'Still Passing' },
+      { from: 'lpass', to: 'rfail', count: s.regressed, color: '#ef4444', label: 'Regressions' },
+      { from: 'lfail', to: 'rpass', count: s.improved, color: '#3b82f6', label: 'Fixes' },
+      { from: 'lfail', to: 'rfail', count: s.stillFailing, color: '#f59e0b', label: 'Still Failing' },
+      { from: 'lrm', to: null, count: s.removedTests, color: '#a78bfa', label: 'Removed' },
+      { from: null, to: 'rnew', count: s.newTests, color: '#60a5fa', label: 'New' },
+    ].filter(f => f.count > 0);
+
+    // Track offsets within each node
+    const srcOffsets = {}; // node key -> current y offset
+    const dstOffsets = {};
+
+    let pathHtml = '';
+    for (const f of flowDefs) {
+      const src = f.from ? leftNodes.find(n => n.key === f.from) : null;
+      const dst = f.to ? rightNodes.find(n => n.key === f.to) : null;
+      const h1 = src ? f.count * scaleL : f.count * scaleR; // height on source side
+      const h2 = dst ? f.count * scaleR : f.count * scaleL;
+
+      const sOff = src ? (srcOffsets[f.from] || 0) : 0;
+      const dOff = dst ? (dstOffsets[f.to] || 0) : 0;
+      if (src) srcOffsets[f.from] = sOff + h1;
+      if (dst) dstOffsets[f.to] = dOff + h2;
+
+      const x1 = src ? leftX + nodeW : leftX; // if no source, start from left margin
+      const y1Top = src ? src.y + sOff : (f.to === 'rnew' ? dst.y + dOff : 30);
+      const y1Bot = y1Top + h1;
+      const x2 = dst ? rightX : rightX + nodeW;
+      const y2Top = dst ? dst.y + dOff : (src && f.from === 'lrm' ? src.y + sOff : 30);
+      const y2Bot = y2Top + h2;
+
+      const midX = (x1 + x2) / 2;
+      const path = `M${x1},${y1Top} C${midX},${y1Top} ${midX},${y2Top} ${x2},${y2Top} L${x2},${y2Bot} C${midX},${y2Bot} ${midX},${y1Bot} ${x1},${y1Bot} Z`;
+      pathHtml += `<path class="sankey-flow" d="${path}" fill="${f.color}" fill-opacity="0.5" stroke="${f.color}" stroke-width="0.5">
+        <title>${f.label}: ${f.count}</title>
+      </path>`;
+    }
+
+    // Nodes
+    let nodeHtml = '';
+    leftNodes.forEach(n => {
+      nodeHtml += `<rect x="${leftX}" y="${n.y}" width="${nodeW}" height="${n.h}" fill="${n.color}"/>
+        <text class="sankey-node" x="${leftX - 6}" y="${n.y + n.h / 2}" text-anchor="end" dominant-baseline="middle">${n.label}</text>
+        <text class="sankey-count" x="${leftX - 6}" y="${n.y + n.h / 2 + 13}" text-anchor="end">${n.count}</text>`;
+    });
+    rightNodes.forEach(n => {
+      nodeHtml += `<rect x="${rightX}" y="${n.y}" width="${nodeW}" height="${n.h}" fill="${n.color}"/>
+        <text class="sankey-node" x="${rightX + nodeW + 6}" y="${n.y + n.h / 2}" text-anchor="start" dominant-baseline="middle">${n.label}</text>
+        <text class="sankey-count" x="${rightX + nodeW + 6}" y="${n.y + n.h / 2 + 13}" text-anchor="start">${n.count}</text>`;
+    });
+
+    el.innerHTML = `<div class="viz-container">
+      <div class="viz-title">Flow: ${esc(prevVer)} &#8594; ${esc(currentVer)}</div>
+      <svg class="sankey-svg" viewBox="0 0 ${W} ${H}">
+        <text x="${leftX}" y="18" class="sankey-node" font-size="12">${esc(prevVer)}</text>
+        <text x="${rightX + nodeW}" y="18" class="sankey-node" font-size="12" text-anchor="end">${esc(currentVer)}</text>
+        ${pathHtml}
+        ${nodeHtml}
+      </svg>
+      <div class="viz-legend">
+        <span><span class="viz-legend-dot" style="background:#10b981"></span>Still Passing (${s.stable})</span>
+        <span><span class="viz-legend-dot" style="background:#3b82f6"></span>Fixes (${s.improved})</span>
+        <span><span class="viz-legend-dot" style="background:#ef4444"></span>Regressions (${s.regressed})</span>
+        <span><span class="viz-legend-dot" style="background:#f59e0b"></span>Still Failing (${s.stillFailing})</span>
+        <span><span class="viz-legend-dot" style="background:#60a5fa"></span>New (${s.newTests})</span>
+        <span><span class="viz-legend-dot" style="background:#a78bfa"></span>Removed (${s.removedTests})</span>
+      </div>
+    </div>`;
+  } catch (e) { el.innerHTML = '<div class="rc-empty">Error loading flow diagram.</div>'; }
+}
+
+// ── 14. GitHub-style Calendar Heatmap ─────────────────────────────────────────
+function renderCalendarHeatmap() {
+  const el = document.getElementById('viz-calendar');
+  if (!el) return;
+  if (!allVersions || !allVersions.length) { el.innerHTML = '<div class="rc-empty">No data.</div>'; return; }
+
+  // Group by date
+  const byDate = {};
+  allVersions.forEach(v => {
+    const d = v.runDate ? (typeof v.runDate === 'string' ? v.runDate.slice(0, 10) : new Date(v.runDate).toISOString().slice(0, 10)) : new Date(v.savedAt).toISOString().slice(0, 10);
+    if (!byDate[d]) byDate[d] = { date: d, runs: 0, passRateSum: 0, passRate: null, versions: [] };
+    byDate[d].runs++;
+    byDate[d].passRateSum += (v.passRate || 0);
+    byDate[d].versions.push(v);
+  });
+  for (const k of Object.keys(byDate)) {
+    byDate[k].passRate = byDate[k].runs > 0 ? byDate[k].passRateSum / byDate[k].runs : 0;
+  }
+
+  // Last 90 days
+  const today = new Date();
+  const days = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ date: key, dow: d.getDay(), data: byDate[key] || null });
+  }
+
+  // Class for each day
+  function cellClass(passRate) {
+    if (passRate == null) return 'l0';
+    if (passRate >= 90) return 'h5';
+    if (passRate >= 80) return 'h4';
+    if (passRate >= 70) return 'h3';
+    if (passRate >= 60) return 'h2';
+    if (passRate >= 50) return 'h1';
+    if (passRate >= 30) return 'l2';
+    return 'l4';
+  }
+
+  // Build grid: 13 weeks x 7 days
+  let gridHtml = '<div style="display:flex;gap:3px"><div style="display:flex;flex-direction:column;gap:3px;padding-top:18px;font-size:9px;color:var(--muted)">';
+  ['Mon', '', 'Wed', '', 'Fri', '', ''].forEach(l => gridHtml += `<div style="height:14px;line-height:14px">${l}</div>`);
+  gridHtml += '</div><div style="display:flex;flex-direction:column;gap:3px">';
+  gridHtml += '<div style="height:14px;font-size:9px;color:var(--muted)">Last 90 days</div>';
+  gridHtml += '<div style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,14px);gap:3px">';
+
+  // Fill leading empty cells (before first day's dow)
+  const firstDow = (days[0].dow + 6) % 7; // Monday=0
+  for (let i = 0; i < firstDow; i++) gridHtml += '<div class="cal-cell" style="visibility:hidden"></div>';
+
+  for (const d of days) {
+    const cls = d.data ? cellClass(d.data.passRate) : 'l0';
+    const tip = d.data ? `${d.date}: ${d.data.passRate.toFixed(1)}% pass (${d.data.runs} run${d.data.runs > 1 ? 's' : ''})` : `${d.date}: no runs`;
+    gridHtml += `<div class="cal-cell ${cls}" data-date="${d.date}" onclick="showCalDetails('${d.date}')"><title>${tip}</title></div>`;
+  }
+  gridHtml += '</div></div></div>';
+
+  el.innerHTML = `<div class="viz-container">
+    <div class="viz-title">Pass Rate Calendar (Last 90 Days)</div>
+    ${gridHtml}
+    <div class="viz-legend">
+      <span style="color:var(--muted)">Less</span>
+      <span><span class="viz-legend-dot" style="background:#ebedf0"></span>No data</span>
+      <span><span class="viz-legend-dot" style="background:#fca5a5"></span>0-50%</span>
+      <span><span class="viz-legend-dot" style="background:#bbf7d0"></span>50-70%</span>
+      <span><span class="viz-legend-dot" style="background:#4ade80"></span>70-90%</span>
+      <span><span class="viz-legend-dot" style="background:#16a34a"></span>90%+</span>
+      <span style="color:var(--muted)">More</span>
+    </div>
+    <div class="cal-details" id="calDetails"></div>
+  </div>`;
+
+  // Store for click handler
+  window._calByDate = byDate;
+}
+
+function showCalDetails(date) {
+  const data = window._calByDate?.[date];
+  const el = document.getElementById('calDetails');
+  if (!el) return;
+  if (!data) {
+    el.innerHTML = `<div class="cal-details-title">${date}</div><div style="font-size:11px;color:var(--muted)">No runs this day.</div>`;
+  } else {
+    const rows = data.versions.map(v => `<div class="cal-details-row">
+      <span style="color:var(--text);font-weight:600">${esc(v.version)}</span>
+      <span style="color:${(v.passRate||0) >= 90 ? 'var(--pass)' : (v.passRate||0) >= 70 ? 'var(--warn)' : 'var(--fail)'};font-weight:700">${v.passRate != null ? v.passRate + '%' : '--'}</span>
+    </div>`).join('');
+    el.innerHTML = `<div class="cal-details-title">${date} · ${data.runs} run${data.runs > 1 ? 's' : ''} · Avg ${data.passRate.toFixed(1)}%</div>${rows}`;
+  }
+  el.style.display = 'block';
+}
+
+// ── 15. Failure Treemap ───────────────────────────────────────────────────────
+async function renderTreemap() {
+  const el = document.getElementById('viz-treemap');
+  if (!el) return;
+  const v = document.getElementById('versionSelect')?.value;
+  if (!v) return;
+
+  // Use existing report endpoint
+  try {
+    const r = await fetch(`/api/dashboard/${ENV}/${PLATFORM}/report/` + encodeURIComponent(v), { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!r.ok) { el.innerHTML = '<div class="rc-empty">No data.</div>'; return; }
+    const d = await r.json();
+    const scenarios = d.scenarios || [];
+    const failed = scenarios.filter(s => s.overall === 'Failed');
+    if (!failed.length) { el.innerHTML = '<div class="rc-empty">No failures to visualize.</div>'; return; }
+
+    // Group by category
+    const byCat = {};
+    for (const s of failed) {
+      if (!byCat[s.category]) byCat[s.category] = { name: s.category, count: 0, items: [] };
+      byCat[s.category].count++;
+      byCat[s.category].items.push(s);
+    }
+    const groups = Object.values(byCat).sort((a, b) => b.count - a.count);
+    const total = failed.length;
+
+    // Simple squarified treemap
+    const W = 1000, H = 500;
+    const rects = squarify(groups.map(g => ({ ...g, value: g.count })), { x: 0, y: 0, w: W, h: H });
+
+    let html = `<div class="viz-container"><div class="viz-title">Failure Distribution — ${total} failures across ${groups.length} categories</div>
+      <div class="treemap-wrap" style="height:${H}px">`;
+    rects.forEach((r, i) => {
+      const intensity = r.value / groups[0].count;
+      const hue = 0;
+      const sat = 70 + intensity * 25;
+      const light = 55 - intensity * 20;
+      const color = `hsl(${hue},${sat}%,${light}%)`;
+      const minDim = Math.min(r.w, r.h);
+      html += `<div class="tm-rect" style="left:${(r.x/W)*100}%;top:${(r.y/H)*100}%;width:${(r.w/W)*100}%;height:${(r.h/H)*100}%;background:${color}" title="${esc(r.name)}: ${r.count} failures">
+        ${minDim > 40 ? `<div class="tm-name">${esc(r.name)}</div><div class="tm-count">${r.count}</div><div class="tm-sub">${((r.count/total)*100).toFixed(0)}% of failures</div>` : ''}
+      </div>`;
+    });
+    html += `</div><div class="viz-legend"><span>Rectangle size = failure count · Darker red = more failures</span></div></div>`;
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<div class="rc-empty">Error loading treemap.</div>'; }
+}
+
+// Simple squarified treemap layout
+function squarify(items, rect) {
+  if (!items.length) return [];
+  const total = items.reduce((s, i) => s + i.value, 0);
+  if (total === 0) return [];
+  const result = [];
+  let { x, y, w, h } = rect;
+  for (const item of items) {
+    const ratio = item.value / total;
+    // Slice: if wide, slice vertically; if tall, slice horizontally
+    if (w > h) {
+      const sliceW = w * ratio;
+      result.push({ ...item, x, y, w: sliceW, h });
+      x += sliceW;
+    } else {
+      const sliceH = h * ratio;
+      result.push({ ...item, x, y, w, h: sliceH });
+      y += sliceH;
+    }
+  }
+  return result;
+}
+
+// ── 16. Step Execution Flow ───────────────────────────────────────────────────
+async function renderStepFlow() {
+  const el = document.getElementById('viz-stepflow');
+  if (!el) return;
+  const v = document.getElementById('versionSelect')?.value;
+  if (!v) return;
+  try {
+    const r = await fetch(`/api/dashboard/${ENV}/${PLATFORM}/report/` + encodeURIComponent(v), { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!r.ok) { el.innerHTML = '<div class="rc-empty">No data.</div>'; return; }
+    const d = await r.json();
+    const scenarios = d.scenarios || [];
+    const failed = scenarios.filter(s => s.overall === 'Failed' && s.failed && s.failed.length > 0);
+    if (!failed.length) { el.innerHTML = '<div class="rc-empty">No failed scenarios with step data.</div>'; return; }
+
+    // Take top 5 failed scenarios with step info
+    const top = failed.slice(0, 5);
+    let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Showing step-by-step flow for top ${top.length} failed scenarios. Red = where failure happened, Grey = skipped after failure.</div>`;
+
+    for (const s of top) {
+      const failStep = s.failed[0]?.step || 10;
+      // Simulate 12 steps for visualization (we don't have full step data — use failStep as anchor)
+      const totalSteps = Math.max(failStep + 4, 12);
+      let stepsHtml = '';
+      for (let i = 1; i <= totalSteps; i++) {
+        let cls = 'pass', label = '&#10003;';
+        if (i === failStep) { cls = 'fail'; label = '&#10005;'; }
+        else if (i > failStep) { cls = 'skip'; label = '&#8212;'; }
+        stepsHtml += `<div class="sf-step">
+          <div class="sf-step-box ${cls}">${label}</div>
+          <div class="sf-step-num">Step ${i}</div>
+        </div>`;
+        if (i < totalSteps) stepsHtml += '<span class="sf-step-arrow">&#8594;</span>';
+      }
+      html += `<div class="sf-scenario">
+        <div class="sf-title">
+          <span>${esc(s.name.length > 70 ? s.name.slice(0, 70) + '...' : s.name)}</span>
+          <span class="sf-fail-pill">Failed at Step ${failStep}</span>
+        </div>
+        <div class="sf-steps">${stepsHtml}</div>
+        ${s.failed[0]?.name ? `<div style="margin-top:10px;font-size:11px;color:#991b1b;background:#fef2f2;padding:8px 12px;border-radius:6px;border-left:3px solid #ef4444"><strong>Reason:</strong> ${esc(s.failed[0].name.slice(0, 200))}</div>` : ''}
+      </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<div class="rc-empty">Error loading step flow.</div>'; }
+}
+
+// ── Phase 3 Tier 1: Root Cause Analytics ─────────────────────────────────────
+let lastRootCauseData = null;
+
+async function loadRootCause(version) {
+  const v = version || document.getElementById('versionSelect')?.value;
+  if (!v) return;
+  try {
+    const res = await fetch(`/api/dashboard/root-cause?env=${ENV}&platform=${PLATFORM}&version=${encodeURIComponent(v)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) return;
+    const d = await res.json();
+    lastRootCauseData = d;
+    renderRootCause(d);
+  } catch (e) { console.error('Root cause load failed:', e); }
+}
+
+function renderRootCause(d) {
+  const sec = document.getElementById('rootCauseSection');
+  sec.style.display = 'block';
+  if (!d.totalFails || d.totalFails === 0) {
+    document.getElementById('rcTotalFails').textContent = '0 failures';
+    document.getElementById('rcCrashBanner').style.display = 'none';
+    document.getElementById('rc-clusters').innerHTML = '<div class="rc-empty">&#10003; No failures in this version!</div>';
+    document.getElementById('rc-patterns').innerHTML = '<div class="rc-empty">No failure patterns to analyze.</div>';
+    document.getElementById('rc-location').innerHTML = '<div class="rc-empty">No step-level failure data.</div>';
+    document.getElementById('rc-blame').innerHTML = '<div class="rc-empty">No persistent failures to blame.</div>';
+    return;
+  }
+  document.getElementById('rcTotalFails').textContent = d.totalFails + ' failures';
+
+  // App Crash banner
+  const crashEl = document.getElementById('rcCrashBanner');
+  if (d.crashSummary && d.crashSummary.count > 0) {
+    const cs = d.crashSummary;
+    const catList = cs.categoriesArr.slice(0, 3).map(c => `${esc(c.name)} (${c.count})`).join(', ');
+    crashEl.innerHTML = `<div class="rc-crash">
+      <div class="rc-crash-icon">&#9888;</div>
+      <div class="rc-crash-content">
+        <div class="rc-crash-title">App Crashes Detected</div>
+        <div class="rc-crash-sub"><strong>${cs.count} scenario${cs.count !== 1 ? 's' : ''}</strong> crashed (${cs.percentage}% of all failures) · Affected: ${catList}</div>
+      </div>
+      <div class="rc-crash-pill">Critical</div>
+    </div>`;
+    crashEl.style.display = 'block';
+  } else {
+    crashEl.style.display = 'none';
+  }
+
+  // 1. Clusters
+  const clusterHtml = (d.clusters || []).length === 0
+    ? '<div class="rc-empty">No recurring failure clusters detected. Each failure is unique.</div>'
+    : (d.clusters || []).map(c => {
+      const cats = c.categoriesArr.slice(0, 5).map(x => `<span class="rc-cluster-cat">${esc(x.name)} (${x.count})</span>`).join('');
+      return `<div class="rc-cluster" style="--c-color:${c.typeColor}">
+        <div class="rc-cluster-head">
+          <div class="rc-cluster-meta">
+            <span class="rc-cluster-tag" style="background:${c.typeColor}">${esc(c.typeLabel)}</span>
+            <span class="rc-cluster-cats">${cats}</span>
+          </div>
+          <div style="text-align:right">
+            <div class="rc-cluster-count">${c.count}</div>
+            <div class="rc-cluster-label">failures</div>
+          </div>
+        </div>
+        <div class="rc-cluster-err">${esc(c.sampleError)}</div>
+        <div class="rc-cluster-root"><strong>&#128269; Root cause detected:</strong> ${c.count} scenarios share the same failure signature. Fix once, potentially resolve all ${c.count} cases.</div>
+      </div>`;
+    }).join('');
+  document.getElementById('rc-clusters').innerHTML = clusterHtml;
+
+  // 2. Patterns
+  const maxPct = Math.max(...(d.patterns || []).map(p => p.percentage), 1);
+  const patternHtml = (d.patterns || []).length === 0
+    ? '<div class="rc-empty">No pattern data available.</div>'
+    : `<div class="rc-pattern-grid">${(d.patterns || []).map(p => `
+      <div class="rc-pattern-row">
+        <div class="rc-pattern-label"><span class="rc-pattern-dot" style="background:${p.color}"></span>${esc(p.label)}</div>
+        <div class="rc-pattern-bar"><div class="rc-pattern-fill" style="width:${(p.percentage / maxPct) * 100}%;background:${p.color}">${p.percentage}%</div></div>
+        <div class="rc-pattern-count"><strong>${p.count}</strong> / ${d.totalFails}</div>
+      </div>`).join('')}</div>`;
+  document.getElementById('rc-patterns').innerHTML = patternHtml;
+
+  // 3. Error Location (step heatmap)
+  const locationHtml = (d.stepHeatmap || []).length === 0
+    ? '<div class="rc-empty">No step-level failure data available.</div>'
+    : `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Most failures happen at these steps:</div>` +
+      (d.stepHeatmap || []).map(s => {
+        const pct = (s.count / d.stepHeatmap[0].count) * 100;
+        return `<div class="rc-step-row">
+          <div class="rc-step-num">Step ${s.step}</div>
+          <div class="rc-step-bar"><div class="rc-step-fill" style="width:${pct}%"></div></div>
+          <div class="rc-step-count" style="color:${s.percentage > 30 ? '#dc2626' : '#f97316'}">${s.count} fails (${s.percentage}%)</div>
+        </div>`;
+      }).join('');
+  document.getElementById('rc-location').innerHTML = locationHtml;
+
+  // 4. Blame Graph
+  const blame = d.blame || {};
+  const blameHtml = !blame.blameData || blame.blameData.length === 0
+    ? '<div class="rc-empty">No persistent failures traced to a specific version yet.</div>'
+    : `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Versions that introduced still-failing tests (${blame.totalBlamed} tests across ${blame.versionsAnalyzed} versions analyzed):</div>` +
+      (blame.blameData || []).map(b => {
+        const items = (b.scenarios || []).map(s => `<div class="rc-blame-item"><span class="name" title="${esc(s.name)}">${esc(s.name)}</span><span class="cat">${esc(s.category)}</span></div>`).join('');
+        return `<div class="rc-blame-card">
+          <div class="rc-blame-head">
+            <div class="rc-blame-version">Introduced in ${esc(b.version)}</div>
+            <div class="rc-blame-count">${b.stillFailingCount} still failing</div>
+          </div>
+          <div class="rc-blame-scenarios">${items}</div>
+        </div>`;
+      }).join('');
+  document.getElementById('rc-blame').innerHTML = blameHtml;
+}
+
+function switchRcTab(tab) {
+  document.querySelectorAll('.rc-tab').forEach(t => t.classList.toggle('active', t.dataset.rc === tab));
+  ['clusters', 'patterns', 'location', 'blame'].forEach(t => {
+    const el = document.getElementById('rc-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── Phase 2: Flaky Tests ─────────────────────────────────────────────────────
+async function loadFlaky() {
+  try {
+    const res = await fetch(`/api/dashboard/flaky?env=${ENV}&platform=${PLATFORM}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) return;
+    const d = await res.json();
+    const sec = document.getElementById('flakySection');
+    if (!d.flakyTests || d.flakyTests.length === 0) { sec.style.display = 'none'; return; }
+    sec.style.display = 'block';
+    document.getElementById('flakyPctPill').textContent = d.flakyPercentage + '%';
+    document.getElementById('flakySub').textContent = `${d.flakyTests.length} flaky · analyzed ${d.totalReportsAnalyzed} reports`;
+    let html = '';
+    for (const t of d.flakyTests.slice(0, 20)) {
+      const dots = t.history.slice(-12).map(h => `<span class="flaky-dot ${h.status === 'Passed' ? 'p' : 'f'}" title="${esc(h.version)}: ${h.status}"></span>`).join('');
+      html += `<div class="flaky-row">
+        <div class="flaky-name" title="${esc(t.name)}">${esc(t.name)}</div>
+        <div class="flaky-cat">${esc(t.category)}</div>
+        <div class="flaky-history">${dots}</div>
+        <div class="flaky-rate">${t.failureRate}%</div>
+      </div>`;
+    }
+    document.getElementById('flakyResult').innerHTML = html;
+  } catch (e) { console.error('Flaky load failed:', e); }
+}
+
+async function loadAnalytics(version) {
+  try {
+    // 1) Filtered data (this env/platform/version) — for trend + insights
+    const v = version || document.getElementById('versionSelect')?.value || '';
+    const url = `/api/dashboard/analytics?env=${ENV}&platform=${PLATFORM}` + (v ? `&version=${encodeURIComponent(v)}` : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const d = res.ok ? await res.json() : { trend: [], insights: [] };
+
+    // 2) Global data (all env/platform) — for comparison charts
+    const gRes = await fetch('/api/dashboard/analytics', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    const g = gRes.ok ? await gRes.json() : { platformStats: {}, envStats: {} };
+
+    // Trend line chart — this env/platform across versions
+    if (trendChartA) trendChartA.destroy();
+    const t = d.trend || [];
+    if (t.length > 0) {
+      trendChartA = new Chart(document.getElementById('trendChartA'), {
+        type: 'line',
+        data: {
+          labels: t.map(x => x.version),
+          datasets: [{
+            label: 'Pass Rate %',
+            data: t.map(x => x.passRate),
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,.1)',
+            pointBackgroundColor: t.map(x => x.passRate >= 90 ? '#10b981' : x.passRate >= 70 ? '#f59e0b' : '#ef4444'),
+            pointRadius: 4, fill: true, tension: .35, borderWidth: 2.5,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.raw + '%' } } },
+          scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } }
+        }
+      });
+    }
+
+    // iOS vs Android — global comparison
+    document.getElementById('platformChartCard').style.display = '';
+    if (platformChartA) platformChartA.destroy();
+    const ps = g.platformStats || {};
+    platformChartA = new Chart(document.getElementById('platformChartA'), {
+      type: 'bar',
+      data: {
+        labels: ['iOS', 'Android'],
+        datasets: [
+          { label: 'Passed', data: [ps.ios?.passed || 0, ps.android?.passed || 0], backgroundColor: '#10b981' },
+          { label: 'Failed', data: [ps.ios?.failed || 0, ps.android?.failed || 0], backgroundColor: '#ef4444' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Staging vs Production — global comparison
+    document.getElementById('envChartCard').style.display = '';
+    if (envChartA) envChartA.destroy();
+    const es = g.envStats || {};
+    envChartA = new Chart(document.getElementById('envChartA'), {
+      type: 'bar',
+      data: {
+        labels: ['Staging', 'Production'],
+        datasets: [
+          { label: 'Passed', data: [es.staging?.passed || 0, es.production?.passed || 0], backgroundColor: '#3b82f6' },
+          { label: 'Failed', data: [es.staging?.failed || 0, es.production?.failed || 0], backgroundColor: '#ef4444' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Insights (based on filtered trend)
+    const insightsEl = document.getElementById('insightsList');
+    insightsEl.innerHTML = (d.insights || []).map(ins => {
+      const cls = ins.type === 'warning' ? 'i-warn' : ins.type === 'good' ? 'i-good' : 'i-info';
+      const icon = ins.type === 'warning' ? '&#9888;' : ins.type === 'good' ? '&#10003;' : '&#8505;';
+      return `<div class="insight-item ${cls}"><span>${icon}</span><span>${ins.text}</span></div>`;
+    }).join('');
+  } catch(e) { console.error('Analytics load failed:', e); }
+}
+
 // ── Socket.io real-time ──────────────────────────────────────────────────────
 try {
   const socket = io();
@@ -502,9 +2070,12 @@ try {
       document.getElementById('newBanner').style.display = 'flex';
       latestKnownVersion = data.version;
     }
+    loadAnalytics();
+    loadFlaky();
   });
   socket.on('report-deleted', data => {
     if (data.env === ENV && data.platform === PLATFORM) init();
+    else { loadAnalytics(); loadFlaky(); }
   });
   socket.on('alert', data => {
     // Show alert as banner briefly
@@ -530,6 +2101,166 @@ function showError(msg){
 }
 
 init();
+</script>
+
+<!-- Compare Versions Modal -->
+<div class="cmp-modal" id="compareModal" onclick="if(event.target===this)closeCompareModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#8644; Compare Versions</h2>
+        <div class="sub" id="cmpModalSub">Side-by-side analysis with health scores, verdict, and deep insights</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeCompareModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div id="compareSection" class="phase2-card" style="margin-top:0">
+        <div class="p2-head">
+          <div>
+            <div class="p2-title">Select versions to compare</div>
+            <div class="p2-sub">Use quick pills or pick manually</div>
+          </div>
+          <div id="cmpExportBtn" style="display:none">
+            <button class="p2-btn-ghost" onclick="exportCompare()">&#8595; Export CSV</button>
+          </div>
+        </div>
+        <div class="quick-pills">
+          <button class="qp" onclick="quickCompare('latest-prev')">Latest vs Previous</button>
+          <button class="qp" onclick="quickCompare('week')">This Week vs Last Week</button>
+          <button class="qp" onclick="quickCompare('latest-stable')">Latest vs Last Stable</button>
+          <button class="qp" onclick="quickCompare('first-latest')">First vs Latest</button>
+        </div>
+        <div class="p2-controls" style="margin-top:14px">
+          <select id="cmpV1" class="p2-select"></select>
+          <span class="p2-vs">vs</span>
+          <select id="cmpV2" class="p2-select"></select>
+          <button class="p2-btn" onclick="runCompare()">Compare &#8594;</button>
+        </div>
+        <div id="compareResult" style="margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Root Cause Analytics Modal -->
+<div class="cmp-modal" id="rootCauseModal" onclick="if(event.target===this)closeRootCauseModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#128269; Root Cause Analytics</h2>
+        <div class="sub">Why tests are failing, where, and which build introduced them</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeRootCauseModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div id="rootCauseSection" class="phase2-card" style="margin-top:0">
+        <div class="p2-head">
+          <div>
+            <div class="p2-title">Overview <span class="p2-pill" id="rcTotalFails">0</span></div>
+            <div class="p2-sub">Cluster · pattern · location · blame analysis for this version</div>
+          </div>
+        </div>
+        <div id="rcCrashBanner" style="display:none"></div>
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-rc="clusters" onclick="switchRcTab('clusters')">Clusters</button>
+          <button class="rc-tab" data-rc="patterns" onclick="switchRcTab('patterns')">Patterns</button>
+          <button class="rc-tab" data-rc="location" onclick="switchRcTab('location')">Error Location</button>
+          <button class="rc-tab" data-rc="blame" onclick="switchRcTab('blame')">Blame Graph</button>
+        </div>
+        <div id="rc-clusters" class="rc-pane"></div>
+        <div id="rc-patterns" class="rc-pane" style="display:none"></div>
+        <div id="rc-location" class="rc-pane" style="display:none"></div>
+        <div id="rc-blame" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Advanced Visualizations Modal -->
+<div class="cmp-modal" id="vizModal" onclick="if(event.target===this)closeVizModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#128202; Advanced Visualizations</h2>
+        <div class="sub">Sankey flow · Calendar heatmap · Failure treemap · Step flow</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeVizModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div id="vizSection" class="phase2-card" style="margin-top:0">
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-viz="sankey" onclick="switchVizTab('sankey')">Sankey Flow</button>
+          <button class="rc-tab" data-viz="calendar" onclick="switchVizTab('calendar')">Calendar Heatmap</button>
+          <button class="rc-tab" data-viz="treemap" onclick="switchVizTab('treemap')">Failure Treemap</button>
+          <button class="rc-tab" data-viz="stepflow" onclick="switchVizTab('stepflow')">Step Flow</button>
+        </div>
+        <div id="viz-sankey" class="rc-pane"></div>
+        <div id="viz-calendar" class="rc-pane" style="display:none"></div>
+        <div id="viz-treemap" class="rc-pane" style="display:none"></div>
+        <div id="viz-stepflow" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openCompareModal() {
+  document.getElementById('compareModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (typeof populateCompareDropdowns === 'function' && document.getElementById('cmpV1').options.length === 0) {
+    populateCompareDropdowns();
+  }
+}
+function closeCompareModal() {
+  document.getElementById('compareModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openRootCauseModal() {
+  document.getElementById('rootCauseModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const v = document.getElementById('versionSelect')?.value;
+  if (!v) {
+    document.getElementById('rc-clusters').innerHTML = '<div class="rc-empty">Select a version first.</div>';
+    return;
+  }
+  // Show loading spinner immediately
+  document.getElementById('rc-clusters').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Analyzing failures...</div>';
+  if (typeof loadRootCause === 'function') loadRootCause(v);
+}
+function closeRootCauseModal() {
+  document.getElementById('rootCauseModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openVizModal() {
+  document.getElementById('vizModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const v = document.getElementById('versionSelect')?.value;
+  if (!v) {
+    document.getElementById('viz-sankey').innerHTML = '<div class="rc-empty">Select a version first.</div>';
+    return;
+  }
+  // Show loading immediately
+  document.getElementById('viz-sankey').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Building visualizations...</div>';
+  if (typeof loadVisualizations === 'function') {
+    vizLoadedForVersion = null;
+    loadVisualizations(v);
+  }
+}
+function closeVizModal() {
+  document.getElementById('vizModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Esc closes any open modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeCompareModal();
+    closeRootCauseModal();
+    closeVizModal();
+  }
+});
 </script>
 </body>
 </html>
