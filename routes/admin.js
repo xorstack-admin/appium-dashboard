@@ -1,6 +1,7 @@
 const express = require('express');
 const { auth, adminOnly } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { uploadErrorHandler } = require('../middleware/upload');
 const Report = require('../models/Report');
 const Scenario = require('../models/Scenario');
 const User = require('../models/User');
@@ -50,7 +51,12 @@ function matchScenario(name, idx) {
 }
 
 // ── Upload Report ────────────────────────────────────────────────────────────
-router.post('/upload', upload.array('files', 20), async (req, res) => {
+router.post('/upload', (req, res, next) => {
+  upload.array('files', 20)(req, res, (err) => {
+    if (err) return uploadErrorHandler(err, req, res, next);
+    next();
+  });
+}, async (req, res) => {
   try {
     const { env, platform, version, label, notes } = req.body;
     if (!env || !platform || !version)
@@ -176,34 +182,42 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
       }
     }
 
-    // Upload all files to Cloudinary (each wrapped in try/catch)
-    const fileRefs = [];
-    for (const file of files) {
+    // Upload files to Cloudinary IN PARALLEL — batch of 10 concurrent uploads
+    // This is ~10x faster than sequential for zips with many screenshots
+    const CONCURRENCY = 10;
+    const fileRefs = new Array(files.length);
+
+    async function uploadOne(file, idx) {
+      const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(file.originalname);
       try {
-        const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(file.originalname);
         const result = await uploadBuffer(file.buffer, {
           folder: `vya-reports/${env}/${platform}/${version}`,
           resourceType: isImage ? 'image' : 'raw',
           publicId: file.originalname.replace(/\.[^.]+$/, ''),
         });
-        fileRefs.push({
+        fileRefs[idx] = {
           type: isImage ? 'screenshot' : file.originalname.match(/\.(xml|json)$/i) ? 'attachment' : 'raw_report',
           url: result.url,
           publicId: result.publicId,
           originalName: file.originalname,
           size: result.size,
-        });
+        };
       } catch (uploadErr) {
-        console.error(`Warning: failed to upload ${file.originalname} to Cloudinary:`, uploadErr.message);
-        // Still track the file even if Cloudinary fails
-        fileRefs.push({
-          type: /\.(png|jpg|jpeg|gif|webp)$/i.test(file.originalname) ? 'screenshot' : 'raw_report',
+        console.error(`Warning: failed to upload ${file.originalname}:`, uploadErr.message);
+        fileRefs[idx] = {
+          type: isImage ? 'screenshot' : 'raw_report',
           url: null,
           publicId: null,
           originalName: file.originalname,
           size: file.size || file.buffer?.length || 0,
-        });
+        };
       }
+    }
+
+    // Process in batches of CONCURRENCY
+    for (let i = 0; i < files.length; i += CONCURRENCY) {
+      const batch = files.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map((f, bIdx) => uploadOne(f, i + bIdx)));
     }
 
     // Enrich with scenario categories

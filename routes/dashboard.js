@@ -7,6 +7,10 @@ const { compareVersions } = require('../services/comparisonService');
 const { detectFlakyTests } = require('../services/flakyService');
 const { generateInsights } = require('../services/insightsService');
 const { rootCauseAnalysis } = require('../services/rootCauseService');
+const { predictiveAnalysis } = require('../services/predictiveService');
+const { failureIntelligence, getScenarioTimeline } = require('../services/failureIntelService');
+const { generateBugTickets, ownerRouting, flakyQuarantine, multiVersionCompare } = require('../services/workflowService');
+const { forensics, scenarioHistory, errorDiff } = require('../services/forensicsService');
 
 const router = express.Router();
 router.use(auth);
@@ -469,6 +473,111 @@ router.get('/insights', async (req, res) => {
 
     const insights = generateInsights({ currentReport, previousReport, platformStats, flakyData });
     res.json({ insights, currentVersion: currentReport.version, previousVersion: previousReport?.version || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Phase 3 Tier 6: Failure Forensics ──────────────────────────────────────
+router.get('/forensics', async (req, res) => {
+  try {
+    const { env, platform } = req.query;
+    if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const result = await forensics(env, platform);
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/forensics/scenario-history', async (req, res) => {
+  try {
+    const { env, platform, scenario } = req.query;
+    if (!env || !platform || !scenario) return res.status(400).json({ error: 'env, platform, scenario required' });
+    const result = await scenarioHistory(env, platform, scenario);
+    res.json(result);
+  } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
+});
+
+router.get('/forensics/error-diff', async (req, res) => {
+  try {
+    const { env, platform, v1, v2, scenario } = req.query;
+    if (!env || !platform || !v1 || !v2 || !scenario) return res.status(400).json({ error: 'env, platform, v1, v2, scenario required' });
+    const result = await errorDiff(env, platform, v1, v2, scenario);
+    res.json(result);
+  } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
+});
+
+// ── Phase 3 Tier 5: Smart Workflows ────────────────────────────────────────
+router.get('/workflow/bug-tickets', async (req, res) => {
+  try {
+    const { env, platform, v1, v2 } = req.query;
+    if (!env || !platform || !v1 || !v2) return res.status(400).json({ error: 'env, platform, v1, v2 required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const result = await generateBugTickets(env, platform, v1, v2);
+    res.json(result);
+  } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
+});
+
+router.get('/workflow/owners', async (req, res) => {
+  try {
+    const { env, platform, version } = req.query;
+    if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const result = await ownerRouting(env, platform, version);
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/workflow/quarantine', async (req, res) => {
+  try {
+    const { env, platform } = req.query;
+    if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const result = await flakyQuarantine(env, platform);
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/workflow/multi-compare', async (req, res) => {
+  try {
+    const { env, platform, versions } = req.query;
+    if (!env || !platform || !versions) return res.status(400).json({ error: 'env, platform, versions (comma-separated) required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const versionList = versions.split(',').map(v => v.trim()).filter(Boolean);
+    if (versionList.length < 2) return res.status(400).json({ error: 'Need at least 2 versions' });
+    const result = await multiVersionCompare(env, platform, versionList);
+    res.json(result);
+  } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
+});
+
+// ── Phase 3 Tier 3: Deep Failure Intelligence ──────────────────────────────
+router.get('/failure-intel', async (req, res) => {
+  try {
+    const { env, platform, version } = req.query;
+    if (!env || !platform) return res.status(400).json({ error: 'env and platform are required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
+    const result = await failureIntelligence(env, platform, version);
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.get('/failure-intel/timeline', async (req, res) => {
+  try {
+    const { env, platform, version, scenario } = req.query;
+    if (!env || !platform || !version || !scenario) return res.status(400).json({ error: 'env, platform, version, scenario required' });
+    const result = await getScenarioTimeline(env, platform, version, scenario);
+    res.json(result);
+  } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
+});
+
+// ── Phase 3 Tier 2: Predictive Analytics ────────────────────────────────────
+router.get('/predictive', async (req, res) => {
+  try {
+    const { env, platform, version } = req.query;
+    if (!env || !platform) return res.status(400).json({ error: 'env and platform are required' });
+    if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) {
+      return res.status(400).json({ error: 'Invalid env or platform' });
+    }
+    const result = await predictiveAnalysis(env, platform, version);
+    res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

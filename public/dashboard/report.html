@@ -45,6 +45,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ctrl-btn:hover{background:#334155;color:#e2e8f0}
 .ctrl-btn.primary{border-color:#6366f1;color:#a5b4fc}
 .ctrl-btn.primary:hover{background:#6366f1;color:#fff}
+
+/* Analytics dropdown menu */
+.analytics-menu-wrap{position:relative;display:inline-block}
+.analytics-trigger{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.15))!important;border-color:#6366f1!important;color:#a5b4fc!important;font-weight:700!important}
+.analytics-trigger:hover{background:linear-gradient(135deg,#6366f1,#8b5cf6)!important;color:#fff!important;transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,.4)}
+.analytics-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:#0f172a;border:1px solid #334155;border-radius:10px;box-shadow:0 20px 40px rgba(0,0,0,.5);padding:6px;display:none;z-index:100;opacity:0;transform:translateY(-6px);transition:opacity .15s, transform .15s}
+.analytics-menu.open{display:block;opacity:1;transform:translateY(0)}
+.analytics-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 14px;background:transparent;border:none;color:#e2e8f0;font-size:13px;font-weight:600;cursor:pointer;border-radius:7px;text-align:left;transition:.15s}
+.analytics-item:hover{background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));color:#fff;transform:translateX(2px)}
+.analytics-item span{flex:1}
 .ctrl-meta{font-size:11px;color:#475569;white-space:nowrap}
 .new-banner{background:#6366f1;color:#fff;padding:8px 40px;font-size:13px;font-weight:600;display:none;align-items:center;gap:12px}
 .new-banner button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px}
@@ -474,13 +484,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span class="ctrl-label">Build</span>
     <div class="ctrl-wrap"><select class="ctrl-select" id="versionSelect" onchange="loadVersion(this.value)" style="min-width:190px"><option>Loading...</option></select></div>
     <div class="ctrl-meta" id="buildMeta"></div>
-    <div style="display:flex;gap:8px;margin-left:auto">
-      <button class="ctrl-btn primary" onclick="openCompareModal()" title="Compare Versions">&#8644; Compare Versions</button>
-      <button class="ctrl-btn primary" onclick="openRootCauseModal()" title="Root Cause Analytics">&#128269; Root Cause</button>
-      <button class="ctrl-btn primary" onclick="openVizModal()" title="Advanced Visualizations">&#128202; Visualizations</button>
+    <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:center">
+      <div class="analytics-menu-wrap">
+        <button class="ctrl-btn primary analytics-trigger" onclick="toggleAnalyticsMenu(event)" title="Analytics Tools">&#128202; Analytics <span style="font-size:10px;margin-left:2px">&#9662;</span></button>
+        <div class="analytics-menu" id="analyticsMenu">
+          <button class="analytics-item" onclick="openCompareModal();closeAnalyticsMenu()">&#8644; <span>Compare Versions</span></button>
+          <button class="analytics-item" onclick="openRootCauseModal();closeAnalyticsMenu()">&#128269; <span>Root Cause</span></button>
+          <button class="analytics-item" onclick="openVizModal();closeAnalyticsMenu()">&#128200; <span>Visualizations</span></button>
+          <button class="analytics-item" onclick="openPredictiveModal();closeAnalyticsMenu()">&#128302; <span>Predictive</span></button>
+          <button class="analytics-item" onclick="openFailureIntelModal();closeAnalyticsMenu()">&#129504; <span>Failure Intel</span></button>
+          <button class="analytics-item" onclick="openWorkflowModal();closeAnalyticsMenu()">&#9881; <span>Workflows</span></button>
+          <button class="analytics-item" onclick="openForensicsModal();closeAnalyticsMenu()">&#128270; <span>Forensics</span></button>
+        </div>
+      </div>
       <button class="ctrl-btn primary" onclick="exportXLSX()" title="Export Excel">&#8595; Excel</button>
       <button class="ctrl-btn" onclick="exportCSV()" title="Export CSV">&#8595; CSV</button>
-      <button class="ctrl-btn" onclick="init()">&#8635;</button>
+      <button class="ctrl-btn" onclick="init()" title="Refresh">&#8635;</button>
     </div>
   </div>
   <div id="ctrl-daily" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
@@ -698,7 +717,9 @@ async function loadVersion(version){
   try{
     const d=await api(`/${ENV}/${PLATFORM}/report/`+encodeURIComponent(version));
     renderBuild(d, version);
-    renderAttachments(d.files || []);
+    // Attachments hidden from user dashboard (admin-only view)
+    const attachEl = document.getElementById('attachments');
+    if (attachEl) attachEl.style.display = 'none';
     loadAnalytics(version); // refresh insights for the selected version
     // Root Cause + Visualizations load on-demand when their modals open
   }catch(e){showError(e.message)}
@@ -709,35 +730,28 @@ function renderAttachments(files) {
   const previewEl = document.getElementById('reportPreview');
   if (!files.length) { el.style.display = 'none'; if (previewEl) previewEl.style.display = 'none'; return; }
 
-  const screenshots = files.filter(f => f.type === 'screenshot' && f.url);
-  const attachments = files.filter(f => f.type !== 'screenshot' && f.url);
+  // Exclude screenshots/images — dashboard only shows non-image attachment files
+  const attachments = files.filter(f =>
+    f.url &&
+    f.type !== 'screenshot' &&
+    !/\.(png|jpg|jpeg|gif|webp)$/i.test(f.originalName || '')
+  );
 
   if (previewEl) previewEl.style.display = 'none';
 
+  if (!attachments.length) { el.style.display = 'none'; return; }
+
   let html = `<div class="card" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden">
     <div style="padding:14px 20px;background:#f8fafc;border-bottom:1px solid var(--border)">
-      <h3 style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px">Attachments (${files.length})</h3>
+      <h3 style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px">Attachments (${attachments.length})</h3>
     </div>
     <div style="padding:16px 20px">`;
 
-  if (screenshots.length) {
-    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Screenshots (${screenshots.length})</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:20px">`;
-    screenshots.forEach(f => {
-      html += `<a href="${f.url}" target="_blank" style="display:block;border:1px solid var(--border);border-radius:8px;overflow:hidden;text-decoration:none;transition:.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform=''">
-        <img src="${f.url}" style="width:100%;height:120px;object-fit:cover;display:block" alt="${esc(f.originalName)}">
-        <div style="padding:6px 10px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.originalName)}</div>
-      </a>`;
-    });
-    html += '</div>';
-  }
-
-  if (attachments.length) {
-    html += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Files (${attachments.length})</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">`;
+  {
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">`;
     attachments.forEach(f => {
       const ext = (f.originalName.split('.').pop() || '').toUpperCase();
-      const sizeKB = f.size ? (f.size / 1024).toFixed(1) + ' KB' : '';
+      const sizeKB = f.size ? (f.size < 1024 * 1024 ? (f.size / 1024).toFixed(1) + ' KB' : (f.size / 1024 / 1024).toFixed(1) + ' MB') : '';
       html += `<a href="${f.url}" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);transition:.15s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
         <div style="width:36px;height:36px;background:#6366f1;color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${ext}</div>
         <div style="flex:1;min-width:0">
@@ -1837,6 +1851,974 @@ async function renderStepFlow() {
   } catch (e) { el.innerHTML = '<div class="rc-empty">Error loading step flow.</div>'; }
 }
 
+// ── Phase 3 Tier 6: Failure Forensics ────────────────────────────────────────
+let lastForensicsData = null;
+
+async function loadForensics() {
+  try {
+    const res = await fetch(`/api/dashboard/forensics?env=${ENV}&platform=${PLATFORM}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load forensics');
+    const d = await res.json();
+    lastForensicsData = d;
+    renderFingerprints(d.fingerprints);
+    renderTtr(d.timeToResolution);
+    renderHistoryPicker();
+    renderDiffPicker();
+  } catch (e) {
+    document.getElementById('fx-fingerprints').innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+// 21. Fingerprints
+function renderFingerprints(d) {
+  const el = document.getElementById('fx-fingerprints');
+  if (!d || !d.fingerprints || !d.fingerprints.length) {
+    el.innerHTML = `<div class="rc-empty">&#10003; No recurring failure fingerprints detected across ${d?.versionsAnalyzed || 0} versions.</div>`;
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Each failure gets a unique fingerprint from (scenario + step + normalized error). Recurring fingerprints = same bug appearing multiple times. Found ${d.recurringCount} recurring fingerprints across ${d.versionsAnalyzed} versions.</div>`;
+  d.fingerprints.forEach(f => {
+    const sev = f.count >= 5 ? '#dc2626' : f.count >= 3 ? '#f59e0b' : '#6366f1';
+    const vers = f.versionsList.slice(0, 8).map(v => `<span style="padding:2px 8px;background:#fef2f2;color:#991b1b;border-radius:4px;font-size:10px;font-weight:600;font-family:monospace">${esc(v)}</span>`).join(' ');
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${sev};border-radius:10px;padding:14px 18px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <code style="padding:2px 10px;background:#0f172a;color:#94a3b8;border-radius:4px;font-size:10px;font-weight:700">${f.fingerprint}</code>
+            <span style="font-size:11px;color:var(--muted)">${esc(f.category)}${f.step ? ` · Step ${f.step}` : ''}</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(f.scenario)}">${esc(f.scenario)}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:${sev};letter-spacing:-.3px">${f.count}&times;</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">occurrences</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-family:monospace;color:#991b1b;background:#fef2f2;padding:8px 12px;border-radius:6px;margin:8px 0;word-break:break-word">${esc(f.sampleError || '(no error message)')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0">
+        <strong style="color:#92400e">&#8987; Recurring bug:</strong> First seen in <strong style="color:var(--text)">${esc(f.firstSeen)}</strong>, last seen in <strong style="color:var(--text)">${esc(f.lastSeen)}</strong>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${vers}${f.versionsList.length > 8 ? `<span style="font-size:10px;color:var(--muted)">+${f.versionsList.length - 8} more</span>` : ''}</div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// 22. Time to Resolution
+function renderTtr(d) {
+  const el = document.getElementById('fx-ttr');
+  if (!d || !d.broken || !d.broken.length) {
+    el.innerHTML = '<div class="rc-empty">&#10003; No currently-failing tests. Everything is passing!</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${d.totalBroken} test${d.totalBroken !== 1 ? 's have' : ' has'} been failing continuously. Ordered by how long broken (oldest first).</div>`;
+  d.broken.forEach(b => {
+    const color = b.severity === 'critical' ? '#dc2626' : b.severity === 'high' ? '#f97316' : b.severity === 'medium' ? '#f59e0b' : '#6366f1';
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${color};border-radius:10px;padding:14px 18px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(b.name)}">${esc(b.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(b.category)} · Broken since <strong style="color:var(--text)">${esc(b.firstBrokenVersion)}</strong></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:900;color:${color};letter-spacing:-.3px">${esc(b.durationLabel)}</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">${b.versionsAffected} version${b.versionsAffected !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      ${b.sampleError ? `<div style="font-size:11px;color:#991b1b;background:#fef2f2;padding:8px 12px;border-radius:6px;margin-top:6px;font-family:monospace;word-break:break-word">${esc(b.sampleError)}</div>` : ''}
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px dashed #e2e8f0;display:flex;gap:12px;align-items:center">
+        <span>&#128202; Failing in: ${b.failStreakVersions.slice(0, 5).map(v => `<code style="padding:1px 6px;background:#fef2f2;color:#991b1b;border-radius:3px;font-size:10px">${esc(v)}</code>`).join(' ')}${b.failStreakVersions.length > 5 ? ` <span style="color:var(--muted)">+${b.failStreakVersions.length - 5} more</span>` : ''}</span>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// 23. Scenario History Picker
+function renderHistoryPicker() {
+  const el = document.getElementById('fx-history');
+  // Build a datalist with all failed scenarios from recent versions
+  const allNames = new Set();
+  if (lastForensicsData?.fingerprints?.fingerprints) {
+    lastForensicsData.fingerprints.fingerprints.forEach(f => allNames.add(f.scenario));
+  }
+  if (lastForensicsData?.timeToResolution?.broken) {
+    lastForensicsData.timeToResolution.broken.forEach(b => allNames.add(b.name));
+  }
+
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Enter scenario name to see its full historical trace across all versions:</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input id="fxHistoryInput" list="fxHistoryList" placeholder="Start typing scenario name..." style="flex:1;padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none">
+      <datalist id="fxHistoryList">${[...allNames].map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
+      <button class="p2-btn" onclick="loadScenarioHistory()">Load History &#8594;</button>
+    </div>
+    <div id="fx-history-result"></div>`;
+}
+
+async function loadScenarioHistory() {
+  const name = document.getElementById('fxHistoryInput').value.trim();
+  if (!name) return;
+  const res = document.getElementById('fx-history-result');
+  res.innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Loading history...</div>';
+  try {
+    const r = await fetch(`/api/dashboard/forensics/scenario-history?env=${ENV}&platform=${PLATFORM}&scenario=${encodeURIComponent(name)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!r.ok) throw new Error((await r.json()).error || 'Not found');
+    const d = await r.json();
+    renderScenarioHistory(d);
+  } catch (e) {
+    res.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderScenarioHistory(d) {
+  const el = document.getElementById('fx-history-result');
+  const color = d.passRate >= 90 ? '#10b981' : d.passRate >= 70 ? '#f59e0b' : '#ef4444';
+
+  let html = `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:8px;word-break:break-word">${esc(d.scenario)}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+      <div class="cmp-card"><div class="cmp-lbl">Runs</div><div class="cmp-val" style="font-size:18px">${d.totalRuns}</div></div>
+      <div class="cmp-card"><div class="cmp-lbl">Passed</div><div class="cmp-val" style="color:#10b981;font-size:18px">${d.passed}</div></div>
+      <div class="cmp-card"><div class="cmp-lbl">Failed</div><div class="cmp-val" style="color:#ef4444;font-size:18px">${d.failed}</div></div>
+      <div class="cmp-card"><div class="cmp-lbl">Pass Rate</div><div class="cmp-val" style="color:${color};font-size:18px">${d.passRate}%</div></div>
+    </div>
+    ${d.mostCommonFailStep ? `<div style="font-size:12px;color:var(--muted)">&#128269; Most common failure: <strong style="color:#dc2626">Step ${d.mostCommonFailStep.step}</strong> (failed ${d.mostCommonFailStep.count}× out of ${d.failed} failures)</div>` : ''}
+  </div>`;
+
+  // Timeline visualization
+  const W = 900, H = 80, pad = 30;
+  const maxX = Math.max(d.history.length - 1, 1);
+  const sx = x => pad + (x / maxX) * (W - 2 * pad);
+  let dots = '';
+  const reversed = [...d.history].reverse(); // oldest to newest
+  reversed.forEach((h, i) => {
+    const x = sx(i);
+    const fill = h.status === 'Passed' ? '#10b981' : '#ef4444';
+    dots += `<circle cx="${x}" cy="40" r="8" fill="${fill}" stroke="#fff" stroke-width="2"><title>${esc(h.version)}: ${h.status}${h.failedStep ? ` (step ${h.failedStep})` : ''}</title></circle>`;
+    if (i % Math.ceil(reversed.length / 12) === 0 || i === reversed.length - 1) {
+      dots += `<text x="${x}" y="70" text-anchor="middle" font-size="9" fill="#475569">${esc(h.version.length > 8 ? h.version.slice(0, 7) + '…' : h.version)}</text>`;
+    }
+  });
+  html += `<div class="viz-container"><div class="viz-title">Historical Timeline (oldest &#8594; newest)</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+      <line x1="${pad}" y1="40" x2="${W - pad}" y2="40" stroke="#e2e8f0" stroke-width="2"/>
+      ${dots}
+    </svg>
+  </div>`;
+
+  // Detailed table
+  html += `<div class="viz-container" style="margin-top:14px"><div class="viz-title">Detailed Trace</div>
+    <div style="max-height:400px;overflow-y:auto"><table class="cmp-table"><thead><tr>
+      <th>Version</th><th style="width:80px">Status</th><th style="width:80px">Step</th><th style="width:80px">Time</th><th>Failure</th>
+    </tr></thead><tbody>`;
+  d.history.forEach(h => {
+    const badge = h.status === 'Passed' ? 'badge-pass' : 'badge-fail';
+    html += `<tr>
+      <td style="font-family:monospace;font-weight:600">${esc(h.version)}</td>
+      <td><span class="badge ${badge}">${h.status}</span></td>
+      <td style="color:${h.failedStep ? '#dc2626' : 'var(--muted)'};font-weight:${h.failedStep ? '700' : '400'}">${h.failedStep || '—'}</td>
+      <td style="font-family:monospace;color:var(--muted)">${h.duration ? h.duration + 's' : '—'}</td>
+      <td style="font-size:11px;color:${h.failureMessage ? '#991b1b' : 'var(--muted)'};word-break:break-word">${esc((h.failureMessage || '—').slice(0, 200))}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div></div>';
+
+  el.innerHTML = html;
+}
+
+// 24. Error Diff Picker
+function renderDiffPicker() {
+  const el = document.getElementById('fx-diff');
+  if (!allVersions || allVersions.length < 2) {
+    el.innerHTML = '<div class="rc-empty">Need at least 2 versions for diff.</div>';
+    return;
+  }
+  const allNames = new Set();
+  if (lastForensicsData?.fingerprints?.fingerprints) {
+    lastForensicsData.fingerprints.fingerprints.forEach(f => allNames.add(f.scenario));
+  }
+  if (lastForensicsData?.timeToResolution?.broken) {
+    lastForensicsData.timeToResolution.broken.forEach(b => allNames.add(b.name));
+  }
+
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Compare error messages for the same scenario between two versions (word-level diff):</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;margin-bottom:14px;align-items:center">
+      <select id="fxDiffV1" class="p2-select">${allVersions.map(v => `<option value="${esc(v.version)}">${esc(v.version)}</option>`).join('')}</select>
+      <select id="fxDiffV2" class="p2-select">${allVersions.map((v, i) => `<option value="${esc(v.version)}" ${i === 0 ? 'selected' : ''}>${esc(v.version)}</option>`).join('')}</select>
+      <input id="fxDiffScenario" list="fxDiffList" placeholder="Scenario name..." style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none">
+      <datalist id="fxDiffList">${[...allNames].map(n => `<option value="${esc(n)}"></option>`).join('')}</datalist>
+      <button class="p2-btn" onclick="loadErrorDiff()">Diff &#8594;</button>
+    </div>
+    <div id="fx-diff-result"></div>`;
+
+  // Default: v1 = second latest, v2 = latest
+  if (allVersions.length >= 2) {
+    document.getElementById('fxDiffV1').value = allVersions[1].version;
+    document.getElementById('fxDiffV2').value = allVersions[0].version;
+  }
+}
+
+async function loadErrorDiff() {
+  const v1 = document.getElementById('fxDiffV1').value;
+  const v2 = document.getElementById('fxDiffV2').value;
+  const scenario = document.getElementById('fxDiffScenario').value.trim();
+  if (!v1 || !v2 || !scenario) return;
+  if (v1 === v2) { document.getElementById('fx-diff-result').innerHTML = '<div class="rc-empty">Pick two different versions.</div>'; return; }
+  const res = document.getElementById('fx-diff-result');
+  res.innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Generating diff...</div>';
+  try {
+    const r = await fetch(`/api/dashboard/forensics/error-diff?env=${ENV}&platform=${PLATFORM}&v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}&scenario=${encodeURIComponent(scenario)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!r.ok) throw new Error((await r.json()).error || 'Failed');
+    const d = await r.json();
+    renderErrorDiff(d);
+  } catch (e) {
+    res.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderErrorDiff(d) {
+  const el = document.getElementById('fx-diff-result');
+  // Rebuild full messages with highlighting
+  let added = 0, removed = 0, same = 0;
+  const diffHtml = d.diff.map(op => {
+    if (op.type === 'added') { added++; return `<span style="background:#d1fae5;color:#065f46;padding:1px 3px;border-radius:3px;font-weight:700">${esc(op.word)}</span>`; }
+    if (op.type === 'removed') { removed++; return `<span style="background:#fee2e2;color:#991b1b;padding:1px 3px;border-radius:3px;font-weight:700;text-decoration:line-through">${esc(op.word)}</span>`; }
+    same++;
+    return esc(op.word);
+  }).join('');
+
+  const v1Status = d.v1.status === 'Passed' ? 'badge-pass' : 'badge-fail';
+  const v2Status = d.v2.status === 'Passed' ? 'badge-pass' : 'badge-fail';
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="font-size:13px">${esc(d.v1.version)}</strong>
+        <span class="badge ${v1Status}">${d.v1.status}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${d.v1.step ? `Step ${d.v1.step}` : ''}${d.v1.duration ? ` · ${d.v1.duration}s` : ''}</div>
+      <div style="font-size:12px;font-family:monospace;color:var(--text);background:#f8fafc;padding:10px 12px;border-radius:6px;word-break:break-word;line-height:1.6">${esc(d.v1.errorMessage || '(no error)')}</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="font-size:13px">${esc(d.v2.version)}</strong>
+        <span class="badge ${v2Status}">${d.v2.status}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${d.v2.step ? `Step ${d.v2.step}` : ''}${d.v2.duration ? ` · ${d.v2.duration}s` : ''}</div>
+      <div style="font-size:12px;font-family:monospace;color:var(--text);background:#f8fafc;padding:10px 12px;border-radius:6px;word-break:break-word;line-height:1.6">${esc(d.v2.errorMessage || '(no error)')}</div>
+    </div>
+  </div>
+  <div class="viz-container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="viz-title" style="margin:0">Word-Level Diff (${esc(d.v1.version)} &#8594; ${esc(d.v2.version)})</div>
+      <div style="display:flex;gap:14px;font-size:11px">
+        <span style="color:#065f46">&#43; ${added} added</span>
+        <span style="color:#991b1b">&minus; ${removed} removed</span>
+        <span style="color:var(--muted)">= ${same} unchanged</span>
+      </div>
+    </div>
+    <div style="font-size:13px;font-family:monospace;background:#f8fafc;padding:14px 18px;border-radius:8px;line-height:1.8;word-break:break-word">${diffHtml || '<span style="color:var(--muted)">No differences.</span>'}</div>
+    <div class="viz-legend"><span><span class="viz-legend-dot" style="background:#d1fae5"></span>Added in v2</span><span><span class="viz-legend-dot" style="background:#fee2e2"></span>Removed from v1</span></div>
+  </div>`;
+}
+
+function switchFxTab(tab) {
+  document.querySelectorAll('.rc-tab[data-fx]').forEach(t => t.classList.toggle('active', t.dataset.fx === tab));
+  ['fingerprints', 'ttr', 'history', 'diff'].forEach(t => {
+    const el = document.getElementById('fx-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── Phase 3 Tier 5: Smart Workflows ──────────────────────────────────────────
+async function loadWorkflows() {
+  const v = document.getElementById('versionSelect')?.value;
+  // Load all 4 sections in parallel
+  await Promise.all([
+    loadBugTickets(v),
+    loadOwners(v),
+    loadQuarantine(),
+    loadMultiCompare(),
+  ]);
+}
+
+async function loadBugTickets(currentVersion) {
+  const el = document.getElementById('wf-tickets');
+  if (!allVersions || allVersions.length < 2) {
+    el.innerHTML = '<div class="rc-empty">Need at least 2 versions to detect regressions.</div>';
+    return;
+  }
+  const v2 = currentVersion || allVersions[0].version;
+  const v1 = allVersions.find(x => x.version !== v2)?.version;
+  if (!v1) { el.innerHTML = '<div class="rc-empty">Need previous version.</div>'; return; }
+
+  try {
+    const res = await fetch(`/api/dashboard/workflow/bug-tickets?env=${ENV}&platform=${PLATFORM}&v1=${encodeURIComponent(v1)}&v2=${encodeURIComponent(v2)}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load');
+    const d = await res.json();
+    renderBugTickets(d, v1, v2);
+  } catch (e) {
+    el.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderBugTickets(d, v1, v2) {
+  const el = document.getElementById('wf-tickets');
+  if (!d.tickets || !d.tickets.length) {
+    el.innerHTML = `<div class="rc-empty">&#10003; No regressions between ${esc(v1)} and ${esc(v2)}.</div>`;
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${d.tickets.length} auto-generated bug ticket${d.tickets.length !== 1 ? 's' : ''} from ${d.totalRegressions} regression${d.totalRegressions !== 1 ? 's' : ''} between <strong style="color:var(--text)">${esc(v1)}</strong> and <strong style="color:var(--text)">${esc(v2)}</strong></div>`;
+  d.tickets.forEach((t, i) => {
+    const sevColor = t.severity === 'Critical' ? '#dc2626' : t.severity === 'High' ? '#f97316' : t.severity === 'Medium' ? '#f59e0b' : '#6366f1';
+    const tagChips = t.tags.map(tag => `<span style="padding:2px 8px;background:#eef2ff;color:#4f46e5;border-radius:4px;font-size:10px;font-weight:700;font-family:monospace">${esc(tag)}</span>`).join(' ');
+    const scenarioList = t.scenarios.slice(0, 5).map(s => `<li style="font-size:11px;color:var(--muted);margin:2px 0"><code>${esc(s.name)}</code>${s.step ? ` <span style="color:var(--muted)">(step ${s.step})</span>` : ''}</li>`).join('');
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${sevColor};border-radius:10px;padding:14px 18px;margin-bottom:12px" id="ticket-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">${esc(t.title)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">${tagChips}</div>
+        </div>
+        <span style="padding:4px 12px;background:${sevColor};color:#fff;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.5px">${t.severity}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px"><strong style="color:var(--text)">Affected:</strong> ${t.count} scenarios · ${t.affectedCategories.join(', ')}</div>
+      <div style="font-size:11px;color:#991b1b;background:#fef2f2;padding:8px 12px;border-radius:6px;margin-bottom:8px"><strong>Failure:</strong> ${esc((t.actual || '').slice(0, 250))}</div>
+      <details style="margin-bottom:8px">
+        <summary style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:600">&#9662; Show ${Math.min(t.scenarios.length, 5)} affected scenarios</summary>
+        <ul style="margin:6px 0 0 20px">${scenarioList}${t.scenarios.length > 5 ? `<li style="font-size:11px;color:var(--muted)">...and ${t.scenarios.length - 5} more</li>` : ''}</ul>
+      </details>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="share-btn" onclick="copyTicket(${i}, 'jira')">&#128203; Copy as Jira</button>
+        <button class="share-btn" onclick="copyTicket(${i}, 'github')">&#128203; Copy as GitHub</button>
+        <button class="share-btn" onclick="copyTicket(${i}, 'plain')">&#128203; Copy Plain Text</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+  window._wfTickets = d.tickets;
+}
+
+function copyTicket(idx, format) {
+  const t = window._wfTickets?.[idx];
+  if (!t) return;
+  let text;
+  if (format === 'jira') text = t.jira;
+  else if (format === 'github') text = t.github;
+  else text = `${t.title}\nSeverity: ${t.severity}\nAffected: ${t.count} scenarios\nFailure: ${t.actual}`;
+  navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard (' + format + ' format)'));
+}
+
+async function loadOwners(currentVersion) {
+  const el = document.getElementById('wf-owners');
+  try {
+    const v = currentVersion || '';
+    const url = `/api/dashboard/workflow/owners?env=${ENV}&platform=${PLATFORM}` + (v ? `&version=${encodeURIComponent(v)}` : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load');
+    const d = await res.json();
+    renderOwners(d);
+  } catch (e) {
+    el.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderOwners(d) {
+  const el = document.getElementById('wf-owners');
+  if (!d.byOwner || !d.byOwner.length) {
+    el.innerHTML = '<div class="rc-empty">No scenarios found for ownership routing.</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Scenarios auto-tagged by team based on keywords in names/categories. Version: <strong style="color:var(--text)">${esc(d.version)}</strong> · ${d.totalFailures} failures / ${d.totalScenarios} total</div>`;
+  for (const o of d.byOwner) {
+    const color = o.failRate >= 50 ? '#dc2626' : o.failRate >= 20 ? '#f59e0b' : '#10b981';
+    const sampleFails = o.scenarios.slice(0, 3).map(s => `<li style="font-size:11px;color:var(--muted);margin:2px 0"><code>${esc(s.name)}</code></li>`).join('');
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${color};border-radius:10px;padding:12px 16px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:monospace;font-size:13px;font-weight:700;padding:3px 10px;background:#eef2ff;color:#4f46e5;border-radius:4px">${esc(o.tag)}</span>
+          <span style="font-size:11px;color:var(--muted)">${o.total} scenarios · ${o.passed} passed · ${o.failed} failed</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:18px;font-weight:900;color:${color}">${o.failRate}%</div>
+          <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">fail rate</span>
+        </div>
+      </div>
+      ${o.failed > 0 ? `<details><summary style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:600">&#9662; ${o.failed} failures to address</summary><ul style="margin:6px 0 0 20px">${sampleFails}${o.scenarios.length > 3 ? `<li style="font-size:11px;color:var(--muted)">...and ${o.scenarios.length - 3} more</li>` : ''}</ul></details>` : ''}
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function loadQuarantine() {
+  const el = document.getElementById('wf-quarantine');
+  try {
+    const res = await fetch(`/api/dashboard/workflow/quarantine?env=${ENV}&platform=${PLATFORM}`, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load');
+    const d = await res.json();
+    renderQuarantine(d);
+  } catch (e) {
+    el.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderQuarantine(d) {
+  const el = document.getElementById('wf-quarantine');
+  if (!d.candidates || !d.candidates.length) {
+    el.innerHTML = `<div class="rc-empty">&#10003; No flaky tests detected. All tests show stable behavior.</div>`;
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${d.totalFlaky} flaky test${d.totalFlaky !== 1 ? 's' : ''} detected across ${d.samplesAnalyzed} versions. Quarantining high-flaky tests (&ge;50%) would boost pass rate.</div>`;
+
+  // Impact comparison card
+  if (d.metricsImpact) {
+    const m = d.metricsImpact;
+    html += `<div class="verdict-banner ${m.passRateImprovement > 0 ? 'good' : 'stable'}" style="margin-bottom:16px">
+      <div class="verdict-icon">&#128737;</div>
+      <div class="verdict-content">
+        <div class="verdict-title">Quarantine Impact</div>
+        <div class="verdict-msg">
+          Current pass rate: <strong>${m.current.passRate}%</strong> (${m.current.passed}/${m.current.passed + m.current.failed})<br>
+          After quarantining ${m.afterQuarantine.quarantined} flaky test${m.afterQuarantine.quarantined !== 1 ? 's' : ''}: <strong style="color:${m.passRateImprovement > 0 ? '#10b981' : '#64748b'}">${m.afterQuarantine.passRate}%</strong> (${m.passRateImprovement >= 0 ? '+' : ''}${m.passRateImprovement}%)
+        </div>
+      </div>
+      <div class="verdict-action ${m.passRateImprovement > 0 ? 'good' : 'stable'}">${m.passRateImprovement >= 0 ? '+' : ''}${m.passRateImprovement}%</div>
+    </div>`;
+  }
+
+  d.candidates.forEach(c => {
+    const color = c.flakyScore >= 50 ? '#ef4444' : c.flakyScore >= 30 ? '#f59e0b' : '#6366f1';
+    const recColor = c.recommendation === 'Quarantine immediately' ? '#dc2626' : c.recommendation === 'Monitor closely' ? '#f59e0b' : '#6366f1';
+    const dots = c.history.map(h => `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:2px;background:${h.status === 'Passed' ? '#10b981' : '#ef4444'}" title="${esc(h.version)}: ${h.status}"></span>`).join('');
+    const tagChips = c.tags.map(tag => `<span style="padding:2px 6px;background:#eef2ff;color:#4f46e5;border-radius:4px;font-size:10px;font-weight:700;font-family:monospace">${esc(tag)}</span>`).join(' ');
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${color};border-radius:10px;padding:12px 16px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(c.name)}">${esc(c.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(c.category)} · ${c.passed}P / ${c.failed}F across ${c.runs} runs · ${c.transitions} flips</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:900;color:${color};letter-spacing:-.3px">${c.flakyScore}%</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">flaky score</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0">
+        <div style="display:flex;align-items:center">${dots}</div>
+        <div style="font-size:10px;color:${recColor};font-weight:700;text-transform:uppercase;letter-spacing:.5px">${c.recommendation}</div>
+        <div style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">${tagChips}</div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+let multiSelectedVersions = [];
+async function loadMultiCompare() {
+  const el = document.getElementById('wf-multi');
+  if (!allVersions || allVersions.length < 2) {
+    el.innerHTML = '<div class="rc-empty">Need at least 2 versions for multi-comparison.</div>';
+    return;
+  }
+  // Default: last 4 versions
+  if (multiSelectedVersions.length === 0) {
+    multiSelectedVersions = allVersions.slice(0, Math.min(4, allVersions.length)).map(v => v.version);
+  }
+  renderMultiSelector();
+  await runMultiCompare();
+}
+
+function renderMultiSelector() {
+  const el = document.getElementById('wf-multi');
+  const chips = allVersions.map(v => {
+    const selected = multiSelectedVersions.includes(v.version);
+    return `<button onclick="toggleMultiVersion('${esc(v.version)}')" style="padding:5px 12px;border-radius:20px;border:1px solid ${selected ? 'var(--accent)' : 'var(--border)'};background:${selected ? '#eef2ff' : '#fff'};color:${selected ? 'var(--accent)' : 'var(--muted)'};font-size:11px;font-weight:600;cursor:pointer">${esc(v.version)}${selected ? ' &#10003;' : ''}</button>`;
+  }).join(' ');
+  el.innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Select 2-8 versions to compare side-by-side:</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${chips}</div>
+    <div id="wf-multi-results"><div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Loading...</div></div>
+  `;
+}
+
+async function toggleMultiVersion(ver) {
+  if (multiSelectedVersions.includes(ver)) {
+    multiSelectedVersions = multiSelectedVersions.filter(v => v !== ver);
+  } else if (multiSelectedVersions.length < 8) {
+    multiSelectedVersions.push(ver);
+  }
+  renderMultiSelector();
+  if (multiSelectedVersions.length >= 2) await runMultiCompare();
+  else document.getElementById('wf-multi-results').innerHTML = '<div class="rc-empty">Select at least 2 versions.</div>';
+}
+
+async function runMultiCompare() {
+  const resultsEl = document.getElementById('wf-multi-results');
+  if (!resultsEl) return;
+  if (multiSelectedVersions.length < 2) return;
+  resultsEl.innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Comparing versions...</div>';
+  try {
+    // Sort selected versions by savedAt ASC (chronological)
+    const ordered = allVersions
+      .filter(v => multiSelectedVersions.includes(v.version))
+      .sort((a, b) => new Date(a.savedAt) - new Date(b.savedAt))
+      .map(v => v.version);
+    const url = `/api/dashboard/workflow/multi-compare?env=${ENV}&platform=${PLATFORM}&versions=${encodeURIComponent(ordered.join(','))}`;
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load');
+    const d = await res.json();
+    renderMultiCompare(d);
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderMultiCompare(d) {
+  const el = document.getElementById('wf-multi-results');
+  const s = d.summary;
+
+  // Summary cards
+  let html = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+    <div class="cmp-card"><div class="cmp-lbl">Always Passing</div><div class="cmp-val" style="color:#10b981;font-size:18px">${s.alwaysPassing}</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Improved</div><div class="cmp-val" style="color:#059669;font-size:18px">${s.improved}</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Unstable</div><div class="cmp-val" style="color:#f59e0b;font-size:18px">${s.unstable}</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Regressed</div><div class="cmp-val" style="color:#ef4444;font-size:18px">${s.regressed}</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Always Failing</div><div class="cmp-val" style="color:#dc2626;font-size:18px">${s.alwaysFailing}</div></div>
+  </div>`;
+
+  // Version evolution chart
+  const W = 800, H = 160, pad = 30;
+  const vers = s.versions;
+  const maxX = vers.length - 1 || 1;
+  const sx = x => pad + (x / maxX) * (W - 2 * pad);
+  const sy = y => H - pad - (y / 100) * (H - 2 * pad);
+  let linePath = '';
+  vers.forEach((v, i) => {
+    const x = sx(i), y = sy(v.passRate || 0);
+    linePath += i === 0 ? `M${x},${y}` : ` L${x},${y}`;
+  });
+  html += `<div class="viz-container" style="margin-bottom:14px">
+    <div class="viz-title">Pass Rate Evolution</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;background:#fff">
+      ${[0, 25, 50, 75, 100].map(y => `<line x1="${pad}" y1="${sy(y)}" x2="${W - pad}" y2="${sy(y)}" stroke="#f1f5f9"/><text x="${pad - 6}" y="${sy(y) + 4}" text-anchor="end" font-size="10" fill="#94a3b8">${y}%</text>`).join('')}
+      <path d="${linePath}" stroke="#6366f1" stroke-width="2.5" fill="none"/>
+      ${vers.map((v, i) => `<circle cx="${sx(i)}" cy="${sy(v.passRate || 0)}" r="5" fill="${(v.passRate || 0) >= 90 ? '#10b981' : (v.passRate || 0) >= 70 ? '#f59e0b' : '#ef4444'}"><title>${esc(v.version)}: ${v.passRate}% (${v.passed}/${v.total})</title></circle>`).join('')}
+      ${vers.map((v, i) => `<text x="${sx(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#475569" font-weight="600">${esc(v.version.length > 8 ? v.version.slice(0, 7) + '…' : v.version)}</text>`).join('')}
+    </svg>
+  </div>`;
+
+  // Evolution matrix table
+  const trendColor = { 'always-passing': '#10b981', 'improved': '#059669', 'unstable': '#f59e0b', 'regressed': '#ef4444', 'always-failing': '#dc2626' };
+  const trendLabel = { 'always-passing': 'Stable', 'improved': 'Improved', 'unstable': 'Unstable', 'regressed': 'Regressed', 'always-failing': 'Broken' };
+
+  html += `<div class="viz-container"><div class="viz-title">Evolution Matrix (top 50)</div>
+    <div style="max-height:400px;overflow-y:auto">
+    <table class="cmp-table"><thead><tr>
+      <th>Scenario</th>
+      ${vers.map(v => `<th style="width:70px;text-align:center">${esc(v.version.length > 8 ? v.version.slice(0, 7) + '…' : v.version)}</th>`).join('')}
+      <th style="width:100px">Trend</th>
+    </tr></thead><tbody>`;
+  d.evolution.slice(0, 50).forEach(row => {
+    const cells = row.history.map(h => {
+      if (h.status === 'Passed') return `<td style="text-align:center"><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#10b981;color:#fff;font-size:10px;line-height:20px;font-weight:800">&#10003;</span></td>`;
+      if (h.status === 'Failed') return `<td style="text-align:center"><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#ef4444;color:#fff;font-size:10px;line-height:20px;font-weight:800">&#10005;</span></td>`;
+      return `<td style="text-align:center"><span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:#e2e8f0;color:#94a3b8;font-size:10px;line-height:20px">&#8212;</span></td>`;
+    }).join('');
+    html += `<tr>
+      <td style="font-weight:500;font-size:11px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(row.name)}">${esc(row.name)}</td>
+      ${cells}
+      <td><span style="padding:3px 8px;border-radius:4px;background:${trendColor[row.trend]};color:#fff;font-size:10px;font-weight:800;letter-spacing:.3px">${trendLabel[row.trend]}</span></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function switchWfTab(tab) {
+  document.querySelectorAll('.rc-tab[data-wf]').forEach(t => t.classList.toggle('active', t.dataset.wf === tab));
+  ['tickets', 'owners', 'quarantine', 'multi'].forEach(t => {
+    const el = document.getElementById('wf-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── Phase 3 Tier 3: Deep Failure Intelligence ────────────────────────────────
+let lastFiData = null;
+let fiVersion = null;
+
+async function loadFailureIntel(version) {
+  fiVersion = version || document.getElementById('versionSelect')?.value;
+  try {
+    const url = `/api/dashboard/failure-intel?env=${ENV}&platform=${PLATFORM}` + (fiVersion ? `&version=${encodeURIComponent(fiVersion)}` : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load failure intelligence');
+    const d = await res.json();
+    lastFiData = d;
+    renderFiTimelineList(d.failedList || []);
+    renderFiSimilarity(d.similarity);
+    renderFiMttf(d.mttf);
+    renderFiCooccurrence(d.coOccurrence);
+  } catch (e) {
+    document.getElementById('fi-timeline').innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderFiTimelineList(failedList) {
+  const el = document.getElementById('fi-timeline');
+  if (!failedList.length) {
+    el.innerHTML = '<div class="rc-empty">&#10003; No failed scenarios in this version!</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Click any failed scenario to see its step-by-step timeline:</div>
+    <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:16px">`;
+  failedList.forEach((f, i) => {
+    html += `<div onclick="showFiTimeline(${i})" style="background:#fff;border:1px solid var(--border);border-left:4px solid #ef4444;border-radius:8px;padding:10px 14px;cursor:pointer;transition:.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(f.name)}">${esc(f.name)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${esc(f.category)}${f.failedStepNum ? ` · Failed at Step ${f.failedStepNum}` : ''}</div>
+        </div>
+        <div style="font-size:12px;color:var(--accent);font-weight:700">View &#8594;</div>
+      </div>
+    </div>`;
+  });
+  html += '</div><div id="fi-timeline-detail"></div>';
+  el.innerHTML = html;
+  window._fiFailedList = failedList;
+}
+
+async function showFiTimeline(idx) {
+  const f = window._fiFailedList?.[idx];
+  if (!f) return;
+  const detail = document.getElementById('fi-timeline-detail');
+  detail.innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Loading timeline...</div>';
+  try {
+    const url = `/api/dashboard/failure-intel/timeline?env=${ENV}&platform=${PLATFORM}&version=${encodeURIComponent(fiVersion)}&scenario=${encodeURIComponent(f.name)}`;
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load timeline');
+    const d = await res.json();
+    let stepsHtml = '<div class="sf-steps" style="max-width:100%;overflow-x:auto;padding:10px 0">';
+    for (const s of d.steps) {
+      const cls = s.status;
+      const label = s.status === 'passed' ? '&#10003;' : s.status === 'failed' ? '&#10005;' : '&#8212;';
+      const title = s.name ? esc(s.name.slice(0, 100)) : '';
+      stepsHtml += `<div class="sf-step" title="${title}">
+        <div class="sf-step-box ${cls === 'passed' ? 'pass' : cls === 'failed' ? 'fail' : 'skip'}">${label}</div>
+        <div class="sf-step-num">Step ${s.step}</div>
+      </div>`;
+      if (s.step < d.totalSteps) stepsHtml += '<span class="sf-step-arrow">&#8594;</span>';
+    }
+    stepsHtml += '</div>';
+
+    detail.innerHTML = `<div class="sf-scenario">
+      <div class="sf-title">
+        <span>&#128269; ${esc(d.name)}</span>
+        <span class="sf-fail-pill">${d.totalSteps} steps · Failed at Step ${d.failedStepNum}</span>
+      </div>
+      ${stepsHtml}
+      ${d.failureReason ? `<div style="margin-top:12px;font-size:12px;color:#991b1b;background:#fef2f2;padding:10px 14px;border-radius:8px;border-left:4px solid #ef4444"><strong>Failure reason:</strong><br>${esc(d.failureReason)}</div>` : ''}
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);display:flex;gap:16px">
+        <span style="color:#059669">&#10003; ${d.failedStepNum - 1} passed</span>
+        <span style="color:#dc2626">&#10005; 1 failed</span>
+        <span>&#8212; ${d.totalSteps - d.failedStepNum} skipped</span>
+      </div>
+    </div>`;
+  } catch (e) {
+    detail.innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderFiSimilarity(s) {
+  const el = document.getElementById('fi-similarity');
+  if (!s || !s.clusters || !s.clusters.length) {
+    el.innerHTML = '<div class="rc-empty">No recurring error patterns detected.</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Similar errors clustered using Jaccard similarity (≥70% word match) across ${s.versionsAnalyzed} versions. ${s.totalFailures} total failures → ${s.totalClusters} clusters.</div>`;
+  s.clusters.forEach(c => {
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid #6366f1;border-radius:10px;padding:12px 16px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-size:12px;font-family:monospace;color:var(--text);background:#f8fafc;padding:8px 12px;border-radius:6px;margin-bottom:6px;word-break:break-word">${esc(c.representative)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:11px">
+            ${c.affectedCategories.slice(0, 3).map(cat => `<span style="padding:2px 8px;background:#eef2ff;color:#4f46e5;border-radius:4px;font-weight:600">${esc(cat)}</span>`).join('')}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:#dc2626;letter-spacing:-.5px">${c.count}</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">occurrences</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0">
+        <strong style="color:#92400e">&#8987; Recurring:</strong> This exact error appeared ${c.count} times across ${c.versionsCount} version${c.versionsCount !== 1 ? 's' : ''} (first: ${esc(c.firstSeen)}, latest: ${esc(c.latestSeen)})
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderFiMttf(m) {
+  const el = document.getElementById('fi-mttf');
+  if (!m || !m.scenarios || !m.scenarios.length) {
+    el.innerHTML = '<div class="rc-empty">Not enough duration data to calculate MTTF.</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Mean time to failure across ${m.totalAnalyzed} scenarios. Tests marked "likely timeout" have fail-times significantly higher than pass-times.</div>`;
+  m.scenarios.forEach(s => {
+    const tooltip = s.likelyTimeout ? 'Likely timeout — test runs longer when failing' : '';
+    const badge = s.likelyTimeout
+      ? '<span style="padding:3px 8px;background:#fef3c7;color:#92400e;border-radius:4px;font-size:10px;font-weight:800">&#9888; LIKELY TIMEOUT</span>'
+      : '';
+    html += `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:4px solid ${s.likelyTimeout ? '#f59e0b' : '#94a3b8'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(s.name)}">${esc(s.name)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(s.category)} · ${s.runs} runs · ${s.failureRate}% fail rate</div>
+        </div>
+        ${badge}
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;align-items:center;padding-top:6px;border-top:1px dashed #e2e8f0">
+        <div>
+          <span style="color:var(--muted)">Avg fail time:</span>
+          <strong style="color:#dc2626;font-size:13px">${s.avgFailTime}s</strong>
+        </div>
+        <div>
+          <span style="color:var(--muted)">Avg pass time:</span>
+          <strong style="color:#059669;font-size:13px">${s.avgPassTime}s</strong>
+        </div>
+        ${s.likelyTimeout ? `<div style="color:#92400e;font-weight:600;margin-left:auto">Fails ${(s.avgFailTime / Math.max(s.avgPassTime, 0.01)).toFixed(1)}× slower than passes</div>` : ''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderFiCooccurrence(c) {
+  const el = document.getElementById('fi-cooc');
+  if (!c || !c.correlations || !c.correlations.length) {
+    el.innerHTML = '<div class="rc-empty">No strong failure correlations detected yet (need more reports).</div>';
+    return;
+  }
+  let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">When test A fails, how often does test B also fail? Analyzed across ${c.samplesAnalyzed} versions with ${c.totalScenarios} unique scenarios.</div>`;
+  c.correlations.forEach(r => {
+    const color = r.strength >= 85 ? '#ef4444' : r.strength >= 70 ? '#f59e0b' : '#6366f1';
+    html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${color};border-radius:10px;padding:12px 16px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:12px;color:var(--muted);font-weight:600">Correlation strength</div>
+        <div style="font-size:22px;font-weight:900;color:${color};letter-spacing:-.5px">${r.strength}%</div>
+      </div>
+      <div style="font-size:12px;line-height:1.8">
+        <strong>When</strong> <span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:4px;font-weight:700">${esc(r.scenarioA)}</span> <strong>fails</strong><br>
+        <strong>Then</strong> <span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:4px;font-weight:700">${esc(r.scenarioB)}</span> <strong>also fails</strong>
+        <span style="color:${color};font-weight:700">${r.pBgivenA}%</span> <strong>of the time</strong>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px dashed #e2e8f0;display:flex;gap:12px">
+        <span>Co-occurred: ${r.coOccurrences} times</span>
+        <span>A failed alone: ${r.failsA - r.coOccurrences}x</span>
+        <span>B failed alone: ${r.failsB - r.coOccurrences}x</span>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function switchFiTab(tab) {
+  document.querySelectorAll('.rc-tab[data-fi]').forEach(t => t.classList.toggle('active', t.dataset.fi === tab));
+  ['timeline', 'similarity', 'mttf', 'cooc'].forEach(t => {
+    const el = document.getElementById('fi-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── Phase 3 Tier 2: Predictive Analytics ─────────────────────────────────────
+async function loadPredictive(version) {
+  const v = version || document.getElementById('versionSelect')?.value;
+  try {
+    const url = `/api/dashboard/predictive?env=${ENV}&platform=${PLATFORM}` + (v ? `&version=${encodeURIComponent(v)}` : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+    if (!res.ok) throw new Error('Failed to load predictive data');
+    const d = await res.json();
+    renderPredictive(d);
+  } catch (e) {
+    document.getElementById('pred-forecast').innerHTML = `<div class="rc-empty">${esc(e.message)}</div>`;
+  }
+}
+
+function renderPredictive(d) {
+  renderForecast(d.forecast);
+  renderRisks(d.risks);
+  renderAnomalies(d.anomalies);
+  renderExpected(d.expectedVsActual);
+}
+
+function renderForecast(f) {
+  const el = document.getElementById('pred-forecast');
+  if (!f.available) { el.innerHTML = `<div class="rc-empty">${esc(f.reason || 'Forecast unavailable')}</div>`; return; }
+  const trendIcon = f.trend === 'improving' ? '&#9650;' : f.trend === 'declining' ? '&#9660;' : '&#8596;';
+  const trendColor = f.trend === 'improving' ? '#10b981' : f.trend === 'declining' ? '#ef4444' : '#94a3b8';
+  const trendBanner = f.trend === 'improving'
+    ? `<div class="verdict-banner good"><div class="verdict-icon">&#10003;</div><div class="verdict-content"><div class="verdict-title">Pass rate improving</div><div class="verdict-msg">Based on last ${f.samplesUsed} versions, pass rate is rising at ${f.slope}% per build. Predicted next: <strong>${f.predictedNext}%</strong></div></div><div class="verdict-action good">Trending Up</div></div>`
+    : f.trend === 'declining'
+    ? `<div class="verdict-banner critical"><div class="verdict-icon">&#9888;</div><div class="verdict-content"><div class="verdict-title">Pass rate declining</div><div class="verdict-msg">Pass rate falling at ${f.slope}% per build. Predicted next: <strong>${f.predictedNext}%</strong> if trend continues</div></div><div class="verdict-action critical">Trending Down</div></div>`
+    : `<div class="verdict-banner stable"><div class="verdict-icon">&#8596;</div><div class="verdict-content"><div class="verdict-title">Pass rate stable</div><div class="verdict-msg">Predicted next: <strong>${f.predictedNext}%</strong> (confidence: ${f.confidence}%)</div></div><div class="verdict-action stable">Steady</div></div>`;
+
+  // Build sparkline
+  const w = 700, h = 160, pad = 30;
+  const pts = f.historicalPoints.concat(f.forecasts.map((fc, i) => ({ x: f.historicalPoints.length + i, y: fc.predictedPassRate, version: `+${fc.step}`, forecast: true })));
+  const maxX = pts.length - 1 || 1;
+  const scale = x => pad + (x / maxX) * (w - 2 * pad);
+  const yScale = y => h - pad - (y / 100) * (h - 2 * pad);
+  let linePath = '';
+  let forecastPath = '';
+  pts.forEach((p, i) => {
+    const x = scale(p.x), y = yScale(p.y);
+    if (i === 0) linePath += `M${x},${y}`;
+    else if (!p.forecast) linePath += ` L${x},${y}`;
+    if (p.forecast) {
+      if (!forecastPath) {
+        const prev = pts[i - 1];
+        forecastPath += `M${scale(prev.x)},${yScale(prev.y)} L${x},${y}`;
+      } else forecastPath += ` L${x},${y}`;
+    }
+  });
+
+  el.innerHTML = `${trendBanner}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0">
+      <div class="cmp-card"><div class="cmp-lbl">Trend</div><div class="cmp-val" style="color:${trendColor}">${trendIcon} ${f.trend}</div></div>
+      <div class="cmp-card"><div class="cmp-lbl">Confidence</div><div class="cmp-val">${f.confidence}%</div></div>
+      <div class="cmp-card"><div class="cmp-lbl">Predicted Next</div><div class="cmp-val" style="color:${trendColor}">${f.predictedNext}%</div></div>
+    </div>
+    <div class="viz-container">
+      <div class="viz-title">Pass Rate Trend &amp; Forecast (${f.samplesUsed} historical + 3 forecast)</div>
+      <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;background:#fff">
+        ${[0, 25, 50, 75, 100].map(y => `<line x1="${pad}" y1="${yScale(y)}" x2="${w - pad}" y2="${yScale(y)}" stroke="#f1f5f9"/><text x="${pad - 6}" y="${yScale(y) + 4}" text-anchor="end" font-size="10" fill="#94a3b8">${y}%</text>`).join('')}
+        <path d="${linePath}" stroke="#6366f1" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+        <path d="${forecastPath}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5,4" fill="none" stroke-linejoin="round"/>
+        ${pts.map(p => `<circle cx="${scale(p.x)}" cy="${yScale(p.y)}" r="4" fill="${p.forecast ? '#94a3b8' : (p.y >= 90 ? '#10b981' : p.y >= 70 ? '#f59e0b' : '#ef4444')}"><title>${p.version}: ${p.y}%${p.forecast ? ' (forecast)' : ''}</title></circle>`).join('')}
+        ${pts.map(p => `<text x="${scale(p.x)}" y="${h - 10}" text-anchor="middle" font-size="9" fill="${p.forecast ? '#94a3b8' : '#475569'}">${p.version.length > 8 ? p.version.slice(0, 7) + '…' : p.version}</text>`).join('')}
+      </svg>
+      <div class="viz-legend"><span><span class="viz-legend-dot" style="background:#6366f1"></span>Historical</span><span><span class="viz-legend-dot" style="background:#94a3b8"></span>Forecast (dashed)</span></div>
+    </div>`;
+}
+
+function renderRisks(risks) {
+  const el = document.getElementById('pred-risk');
+  if (!risks || !risks.length) { el.innerHTML = '<div class="rc-empty">Not enough data to calculate risk scores.</div>'; return; }
+  let html = '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Top 10 highest-risk scenarios (based on failure rate, flakiness, and recency):</div>';
+  risks.slice(0, 10).forEach((r, i) => {
+    const risk = r.riskScore;
+    const color = risk >= 70 ? '#ef4444' : risk >= 40 ? '#f59e0b' : '#10b981';
+    const lvl = risk >= 70 ? 'HIGH' : risk >= 40 ? 'MED' : 'LOW';
+    html += `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:4px solid ${color}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+          <span style="color:var(--muted);font-family:monospace;min-width:20px">#${i + 1}</span>
+          <span style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(r.name)}">${esc(r.name)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="padding:3px 8px;border-radius:10px;font-size:10px;font-weight:800;background:${color};color:#fff">${lvl}</span>
+          <div style="font-size:22px;font-weight:900;color:${color};letter-spacing:-.5px;min-width:40px;text-align:right">${risk}</div>
+        </div>
+      </div>
+      <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">
+        <div style="height:100%;width:${risk}%;background:${color};transition:width .6s"></div>
+      </div>
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--muted)">
+        <span>${esc(r.category)}</span>
+        <span style="color:#dc2626">Fail rate: <strong>${r.failureRate}%</strong></span>
+        <span style="color:#d97706">Flakiness: <strong>${r.flakiness}%</strong></span>
+        <span>Runs: <strong>${r.runs}</strong></span>
+        ${r.currentlyFailing ? '<span style="color:#ef4444;font-weight:700">&#9679; Currently failing</span>' : ''}
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderAnomalies(a) {
+  const el = document.getElementById('pred-anomalies');
+  if (!a.available) { el.innerHTML = `<div class="rc-empty">${esc(a.reason || 'Anomaly detection unavailable')}</div>`; return; }
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+    <div class="cmp-card"><div class="cmp-lbl">Baseline Mean</div><div class="cmp-val">${a.mean}%</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Std Deviation</div><div class="cmp-val">${a.stdDev}</div></div>
+    <div class="cmp-card" style="border-left-color:#ef4444"><div class="cmp-lbl">Anomalies Found</div><div class="cmp-val" style="color:#ef4444">${a.totalAnomalies}</div></div>
+  </div>`;
+
+  if (!a.anomalies.length) {
+    html += '<div class="rc-empty">&#10003; No anomalies detected. All versions are within 2σ of baseline.</div>';
+  } else {
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Versions deviating &gt;2σ from baseline (${a.samplesAnalyzed} samples):</div>`;
+    a.anomalies.forEach(x => {
+      const color = x.type === 'negative' ? '#ef4444' : '#10b981';
+      const icon = x.type === 'negative' ? '&#9660;' : '&#9650;';
+      const label = x.type === 'negative' ? 'Below baseline' : 'Above baseline';
+      html += `<div style="background:#fff;border:1px solid var(--border);border-left:4px solid ${color};border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:14px;font-weight:800">${esc(x.version)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${label} · ${Math.abs(x.deviation)}σ deviation</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px">Pass Rate</div>
+            <div style="font-size:18px;font-weight:900;color:${color}">${x.passRate}%</div>
+          </div>
+          <div style="font-size:24px;color:${color}">${icon}</div>
+        </div>
+      </div>`;
+    });
+  }
+  el.innerHTML = html;
+}
+
+function renderExpected(e) {
+  const el = document.getElementById('pred-expected');
+  if (!e.available) { el.innerHTML = `<div class="rc-empty">${esc(e.reason || 'Not enough data')}</div>`; return; }
+  const gapColor = e.gap >= 0 ? '#10b981' : '#ef4444';
+  const gapIcon = e.gap > 0 ? '&#9650;' : e.gap < 0 ? '&#9660;' : '&#8596;';
+  const verdictColor = e.verdict === 'below expectations' ? '#ef4444' : e.verdict === 'exceeds expectations' ? '#10b981' : '#6366f1';
+
+  el.innerHTML = `<div class="verdict-banner ${e.gap <= -10 ? 'critical' : e.gap >= 10 ? 'good' : 'stable'}">
+    <div class="verdict-icon">${e.gap <= -10 ? '&#9888;' : e.gap >= 10 ? '&#10003;' : '&#8596;'}</div>
+    <div class="verdict-content">
+      <div class="verdict-title">${esc(e.version)} is ${esc(e.verdict)}</div>
+      <div class="verdict-msg">Based on ${e.samplesUsed} historical reports (median: ${e.expectedMedian}%, actual: ${e.actual}%)</div>
+    </div>
+    <div class="verdict-action ${e.gap <= -10 ? 'critical' : e.gap >= 10 ? 'good' : 'stable'}">${e.gap > 0 ? '+' : ''}${e.gap}%</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0">
+    <div class="cmp-card"><div class="cmp-lbl">Expected (Median)</div><div class="cmp-val">${e.expectedMedian}%</div></div>
+    <div class="cmp-card"><div class="cmp-lbl">Actual</div><div class="cmp-val" style="color:${gapColor}">${e.actual}%</div></div>
+    <div class="cmp-card" style="border-left-color:${gapColor}"><div class="cmp-lbl">Gap</div><div class="cmp-val" style="color:${gapColor}">${gapIcon} ${e.gap > 0 ? '+' : ''}${e.gap}%</div></div>
+  </div>
+
+  <div class="viz-container">
+    <div class="viz-title">Historical Distribution vs ${esc(e.version)}</div>
+    <svg viewBox="0 0 800 140" style="width:100%;height:auto">
+      <line x1="40" y1="70" x2="760" y2="70" stroke="#e2e8f0" stroke-width="2"/>
+      <rect x="${40 + (e.expectedP25 / 100) * 720}" y="55" width="${((e.expectedP75 - e.expectedP25) / 100) * 720}" height="30" fill="#6366f1" fill-opacity="0.15" stroke="#6366f1" stroke-width="1"/>
+      <line x1="${40 + (e.expectedMedian / 100) * 720}" y1="45" x2="${40 + (e.expectedMedian / 100) * 720}" y2="95" stroke="#6366f1" stroke-width="3"/>
+      <circle cx="${40 + (e.actual / 100) * 720}" cy="70" r="10" fill="${gapColor}" stroke="#fff" stroke-width="3"/>
+      <text x="${40 + (e.expectedMedian / 100) * 720}" y="110" text-anchor="middle" font-size="10" fill="#6366f1" font-weight="700">Expected ${e.expectedMedian}%</text>
+      <text x="${40 + (e.actual / 100) * 720}" y="38" text-anchor="middle" font-size="11" fill="${gapColor}" font-weight="800">${e.actual}%</text>
+      <text x="40" y="125" font-size="9" fill="#94a3b8">0%</text>
+      <text x="760" y="125" font-size="9" fill="#94a3b8" text-anchor="end">100%</text>
+    </svg>
+    <div class="viz-legend">
+      <span><span class="viz-legend-dot" style="background:#6366f1"></span>Expected range (P25-P75: ${e.expectedP25}%-${e.expectedP75}%)</span>
+      <span><span class="viz-legend-dot" style="background:${gapColor}"></span>Current version</span>
+    </div>
+  </div>`;
+}
+
+function switchPredTab(tab) {
+  document.querySelectorAll('.rc-tab[data-pred]').forEach(t => t.classList.toggle('active', t.dataset.pred === tab));
+  ['forecast', 'risk', 'anomalies', 'expected'].forEach(t => {
+    const el = document.getElementById('pred-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
 // ── Phase 3 Tier 1: Root Cause Analytics ─────────────────────────────────────
 let lastRootCauseData = null;
 
@@ -2203,6 +3185,114 @@ init();
   </div>
 </div>
 
+<!-- Failure Forensics Modal -->
+<div class="cmp-modal" id="forensicsModal" onclick="if(event.target===this)closeForensicsModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#128270; Failure Forensics</h2>
+        <div class="sub">Fingerprinting · Time-to-Resolution · Scenario History · Error Diff</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeForensicsModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div class="phase2-card" style="margin-top:0">
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-fx="fingerprints" onclick="switchFxTab('fingerprints')">Fingerprints</button>
+          <button class="rc-tab" data-fx="ttr" onclick="switchFxTab('ttr')">Time to Resolution</button>
+          <button class="rc-tab" data-fx="history" onclick="switchFxTab('history')">Scenario History</button>
+          <button class="rc-tab" data-fx="diff" onclick="switchFxTab('diff')">Error Diff</button>
+        </div>
+        <div id="fx-fingerprints" class="rc-pane"></div>
+        <div id="fx-ttr" class="rc-pane" style="display:none"></div>
+        <div id="fx-history" class="rc-pane" style="display:none"></div>
+        <div id="fx-diff" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Smart Workflows Modal -->
+<div class="cmp-modal" id="workflowModal" onclick="if(event.target===this)closeWorkflowModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#9881; Smart Workflows</h2>
+        <div class="sub">Bug Tickets · Team Routing · Flaky Quarantine · Multi-Version Compare</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeWorkflowModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div class="phase2-card" style="margin-top:0">
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-wf="tickets" onclick="switchWfTab('tickets')">Bug Tickets</button>
+          <button class="rc-tab" data-wf="owners" onclick="switchWfTab('owners')">Team Routing</button>
+          <button class="rc-tab" data-wf="quarantine" onclick="switchWfTab('quarantine')">Flaky Quarantine</button>
+          <button class="rc-tab" data-wf="multi" onclick="switchWfTab('multi')">Multi-Version</button>
+        </div>
+        <div id="wf-tickets" class="rc-pane"></div>
+        <div id="wf-owners" class="rc-pane" style="display:none"></div>
+        <div id="wf-quarantine" class="rc-pane" style="display:none"></div>
+        <div id="wf-multi" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Failure Intelligence Modal -->
+<div class="cmp-modal" id="failureIntelModal" onclick="if(event.target===this)closeFailureIntelModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#129504; Deep Failure Intelligence</h2>
+        <div class="sub">Step Timeline · Error Similarity · MTTF · Co-occurrence Matrix</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closeFailureIntelModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div class="phase2-card" style="margin-top:0">
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-fi="timeline" onclick="switchFiTab('timeline')">Step Timeline</button>
+          <button class="rc-tab" data-fi="similarity" onclick="switchFiTab('similarity')">Error Similarity</button>
+          <button class="rc-tab" data-fi="mttf" onclick="switchFiTab('mttf')">MTTF</button>
+          <button class="rc-tab" data-fi="cooc" onclick="switchFiTab('cooc')">Co-occurrence</button>
+        </div>
+        <div id="fi-timeline" class="rc-pane"></div>
+        <div id="fi-similarity" class="rc-pane" style="display:none"></div>
+        <div id="fi-mttf" class="rc-pane" style="display:none"></div>
+        <div id="fi-cooc" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Predictive Analytics Modal -->
+<div class="cmp-modal" id="predictiveModal" onclick="if(event.target===this)closePredictiveModal()">
+  <div class="cmp-modal-content">
+    <div class="cmp-modal-header">
+      <div>
+        <h2>&#128302; Predictive Analytics</h2>
+        <div class="sub">Forecasting · Risk Scoring · Anomaly Detection · Expected vs Actual</div>
+      </div>
+      <button class="cmp-modal-close" onclick="closePredictiveModal()" title="Close (Esc)">&#10005;</button>
+    </div>
+    <div class="cmp-modal-body">
+      <div class="phase2-card" style="margin-top:0">
+        <div class="rc-tabs">
+          <button class="rc-tab active" data-pred="forecast" onclick="switchPredTab('forecast')">Forecast</button>
+          <button class="rc-tab" data-pred="risk" onclick="switchPredTab('risk')">Risk Scores</button>
+          <button class="rc-tab" data-pred="anomalies" onclick="switchPredTab('anomalies')">Anomalies</button>
+          <button class="rc-tab" data-pred="expected" onclick="switchPredTab('expected')">Expected vs Actual</button>
+        </div>
+        <div id="pred-forecast" class="rc-pane"></div>
+        <div id="pred-risk" class="rc-pane" style="display:none"></div>
+        <div id="pred-anomalies" class="rc-pane" style="display:none"></div>
+        <div id="pred-expected" class="rc-pane" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function openCompareModal() {
   document.getElementById('compareModal').classList.add('open');
@@ -2253,13 +3343,80 @@ function closeVizModal() {
   document.body.style.overflow = '';
 }
 
+function openPredictiveModal() {
+  document.getElementById('predictiveModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const v = document.getElementById('versionSelect')?.value;
+  document.getElementById('pred-forecast').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Analyzing trends and patterns...</div>';
+  if (typeof loadPredictive === 'function') loadPredictive(v);
+}
+function closePredictiveModal() {
+  document.getElementById('predictiveModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openFailureIntelModal() {
+  document.getElementById('failureIntelModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const v = document.getElementById('versionSelect')?.value;
+  document.getElementById('fi-timeline').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Analyzing failures across versions...</div>';
+  if (typeof loadFailureIntel === 'function') loadFailureIntel(v);
+}
+function closeFailureIntelModal() {
+  document.getElementById('failureIntelModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openWorkflowModal() {
+  document.getElementById('workflowModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('wf-tickets').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Generating workflows...</div>';
+  if (typeof loadWorkflows === 'function') loadWorkflows();
+}
+function closeWorkflowModal() {
+  document.getElementById('workflowModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function openForensicsModal() {
+  document.getElementById('forensicsModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('fx-fingerprints').innerHTML = '<div class="rc-empty"><div class="spinner" style="margin:0 auto 10px"></div>Analyzing failures across history...</div>';
+  if (typeof loadForensics === 'function') loadForensics();
+}
+function closeForensicsModal() {
+  document.getElementById('forensicsModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
 // Esc closes any open modal
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeCompareModal();
     closeRootCauseModal();
     closeVizModal();
+    closePredictiveModal();
+    closeFailureIntelModal();
+    closeWorkflowModal();
+    closeForensicsModal();
+    closeAnalyticsMenu();
   }
+});
+
+// Analytics dropdown menu
+function toggleAnalyticsMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('analyticsMenu');
+  if (m) m.classList.toggle('open');
+}
+function closeAnalyticsMenu() {
+  const m = document.getElementById('analyticsMenu');
+  if (m) m.classList.remove('open');
+}
+// Close on outside click
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.analytics-menu-wrap');
+  if (wrap && !wrap.contains(e.target)) closeAnalyticsMenu();
 });
 </script>
 </body>

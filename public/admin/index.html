@@ -144,7 +144,7 @@ tr:last-child td{border-bottom:none}
       <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div class="icon">&#128194;</div>
         <p>Drag &amp; drop Appium HTML reports or screenshots here</p>
-        <div class="hint">Supports .html, .xml, .json, .png, .jpg, .zip (max 25MB each). Zip files are auto-extracted.</div>
+        <div class="hint">Supports .html, .xml, .json, .png, .jpg, .zip (max 500MB each). Zip files are auto-extracted.</div>
       </div>
       <input type="file" id="fileInput" multiple accept=".html,.xml,.json,.png,.jpg,.jpeg,.gif,.webp,.zip" style="display:none" onchange="handleFiles(this.files)">
       <div class="file-list" id="fileList"></div>
@@ -170,7 +170,7 @@ tr:last-child td{border-bottom:none}
       <div class="form-group" style="margin:0"><select id="filterPlatform" onchange="loadReports()"><option value="">All Platforms</option><option value="ios">iOS</option><option value="android">Android</option></select></div>
     </div>
     <div class="card">
-      <table><thead><tr><th>Version</th><th>Env</th><th>Platform</th><th>Pass Rate</th><th>Scenarios</th><th>Uploaded</th><th>Actions</th></tr></thead>
+      <table><thead><tr><th>Version</th><th>Env</th><th>Platform</th><th>Pass Rate</th><th>Scenarios</th><th>Attachments</th><th>Uploaded</th><th>Actions</th></tr></thead>
       <tbody id="reportsTable"><tr><td colspan="7" style="text-align:center;color:var(--muted)">Loading...</td></tr></tbody></table>
     </div>
   </div>
@@ -313,18 +313,39 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 function handleFiles(fileList) {
   for (const f of fileList) uploadFiles.push(f);
   renderFileList();
+  // Clear any stale status message when new files are added
+  const status = document.getElementById('uploadStatus');
+  if (status) status.innerHTML = '';
+  updateUploadButton();
+}
+
+function formatSize(bytes) {
+  if (bytes == null) return '--';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
 }
 
 function renderFileList() {
   const el = document.getElementById('fileList');
   el.innerHTML = uploadFiles.map((f, i) => `<div class="file-item">
     <span class="name">${esc(f.name)}</span>
-    <span class="size">${(f.size/1024).toFixed(1)} KB</span>
+    <span class="size">${formatSize(f.size)}</span>
     <span class="remove" onclick="removeFile(${i})">&#10005;</span>
   </div>`).join('');
 }
 
-function removeFile(i) { uploadFiles.splice(i, 1); renderFileList(); }
+function removeFile(i) { uploadFiles.splice(i, 1); renderFileList(); updateUploadButton(); }
+
+function updateUploadButton() {
+  const btn = document.getElementById('uploadBtn');
+  if (!btn) return;
+  const hasFiles = uploadFiles.length > 0;
+  btn.disabled = !hasFiles;
+  btn.style.opacity = hasFiles ? '1' : '0.5';
+  btn.style.cursor = hasFiles ? 'pointer' : 'not-allowed';
+}
 
 async function uploadReport() {
   const env = document.getElementById('upEnv').value;
@@ -338,7 +359,20 @@ async function uploadReport() {
 
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true; btn.textContent = 'Uploading...';
-  document.getElementById('uploadStatus').innerHTML = '<span style="color:var(--accent)">Uploading and parsing report...</span>';
+
+  const totalSize = uploadFiles.reduce((s, f) => s + f.size, 0);
+  const totalMB = (totalSize / 1024 / 1024).toFixed(1);
+  document.getElementById('uploadStatus').innerHTML = `
+    <div style="background:#1e293b;border-radius:10px;padding:14px 16px;border:1px solid var(--border)">
+      <div id="upStage" style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">&#8679; Uploading ${uploadFiles.length} file(s) · ${totalMB} MB</div>
+      <div style="background:#0f172a;border-radius:8px;height:10px;overflow:hidden">
+        <div id="upBar" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);height:100%;width:0%;transition:width .15s"></div>
+      </div>
+      <div id="upPct" style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between">
+        <span id="upPctTxt">0%</span>
+        <span id="upSpeedTxt">Starting...</span>
+      </div>
+    </div>`;
 
   const fd = new FormData();
   fd.append('env', env);
@@ -349,15 +383,8 @@ async function uploadReport() {
   uploadFiles.forEach(f => fd.append('files', f));
 
   try {
-    const res = await fetch('/api/admin/upload', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + TOKEN },
-      body: fd,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Upload failed');
-
-    document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--pass)">Upload successful! Pass rate: ${data.report.passRate}% (${data.report.totalPassed} passed, ${data.report.totalFailed} failed)</span>`;
+    const data = await uploadWithProgress('/api/admin/upload', fd);
+    document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--pass)">&#10003; Upload successful! Pass rate: ${data.report.passRate}% (${data.report.totalPassed} passed, ${data.report.totalFailed} failed)</span>`;
     uploadFiles = [];
     renderFileList();
     document.getElementById('upVersion').value = '';
@@ -367,7 +394,54 @@ async function uploadReport() {
   } catch(e) {
     document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--fail)">${esc(e.message)}</span>`;
   }
-  btn.disabled = false; btn.textContent = 'Upload & Parse Report';
+  btn.textContent = 'Upload & Parse Report';
+  updateUploadButton();
+}
+
+// XMLHttpRequest with real-time progress tracking
+function uploadWithProgress(url, formData) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+
+    const startTime = Date.now();
+
+    xhr.upload.addEventListener('progress', e => {
+      if (!e.lengthComputable) return;
+      const pct = (e.loaded / e.total * 100);
+      const elapsed = (Date.now() - startTime) / 1000;
+      const speedMBs = (e.loaded / 1024 / 1024 / Math.max(elapsed, 0.1));
+      const remaining = elapsed > 0 ? ((e.total - e.loaded) / (e.loaded / elapsed)) : 0;
+      const bar = document.getElementById('upBar');
+      const pctTxt = document.getElementById('upPctTxt');
+      const speedTxt = document.getElementById('upSpeedTxt');
+      if (bar) bar.style.width = pct.toFixed(1) + '%';
+      if (pctTxt) pctTxt.textContent = `${pct.toFixed(1)}% · ${(e.loaded / 1024 / 1024).toFixed(1)} MB of ${(e.total / 1024 / 1024).toFixed(1)} MB`;
+      if (speedTxt) speedTxt.textContent = `${speedMBs.toFixed(1)} MB/s · ~${Math.ceil(remaining)}s left`;
+      if (pct >= 99.9) {
+        const stage = document.getElementById('upStage');
+        if (stage) stage.innerHTML = '&#9881; Extracting zip &amp; parsing reports...';
+        if (speedTxt) speedTxt.textContent = 'Server processing...';
+      }
+    });
+
+    xhr.onload = () => {
+      const text = xhr.responseText;
+      let data;
+      try { data = JSON.parse(text); }
+      catch (_) {
+        if (xhr.status === 413) return reject(new Error('File too large. Try a smaller zip or split files.'));
+        if (xhr.status >= 500) return reject(new Error(`Server error (${xhr.status}). File may exceed server limits.`));
+        return reject(new Error(`Upload failed (${xhr.status}). Unexpected response.`));
+      }
+      if (xhr.status < 200 || xhr.status >= 300) return reject(new Error(data.error || 'Upload failed'));
+      resolve(data);
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.ontimeout = () => reject(new Error('Upload timed out'));
+    xhr.send(formData);
+  });
 }
 
 // ── Reports ──────────────────────────────────────────────────────────────────
@@ -382,20 +456,89 @@ async function loadReports() {
     const reps = data.reports || [];
     document.getElementById('reportCount').textContent = reps.length;
     const tbody = document.getElementById('reportsTable');
-    if (!reps.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No reports found</td></tr>'; return; }
-    tbody.innerHTML = reps.map(r => `<tr>
-      <td><strong>${esc(r.version)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(r.label||'')}</span></td>
-      <td><span class="badge-env ${r.env==='staging'?'badge-stg':'badge-prd'}">${r.env.toUpperCase()}</span></td>
-      <td>${r.platform.toUpperCase()}</td>
-      <td style="font-weight:700;color:${r.passRate>=90?'var(--pass)':r.passRate>=70?'var(--warn)':'var(--fail)'}">${r.passRate!=null?r.passRate+'%':'--'}</td>
-      <td>${r.totalScenarios||0}</td>
-      <td>${fmtDate(r.createdAt)}</td>
-      <td class="btn-group">
-        <button class="btn btn-sm" onclick="editReport('${r._id}','${esc(r.label||'')}','${esc(r.notes||'')}')">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteReport('${r._id}','${esc(r.version)}')">Delete</button>
-      </td>
-    </tr>`).join('');
+    if (!reps.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No reports found</td></tr>'; return; }
+    window._adminReports = reps;
+    const rows = [];
+    reps.forEach((r, idx) => {
+      // Count only non-image files (screenshots hidden from admin view)
+      const fileCount = (r.files || []).filter(f => !/\.(png|jpg|jpeg|gif|webp)$/i.test(f.originalName || '')).length;
+      rows.push(`<tr>
+        <td><strong>${esc(r.version)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc(r.label||'')}</span></td>
+        <td><span class="badge-env ${r.env==='staging'?'badge-stg':'badge-prd'}">${r.env.toUpperCase()}</span></td>
+        <td>${r.platform.toUpperCase()}</td>
+        <td style="font-weight:700;color:${r.passRate>=90?'var(--pass)':r.passRate>=70?'var(--warn)':'var(--fail)'}">${r.passRate!=null?r.passRate+'%':'--'}</td>
+        <td>${r.totalScenarios||0}</td>
+        <td>${fileCount > 0 ? `<button class="btn btn-sm" onclick="toggleAttachments(${idx})" id="attach-btn-${idx}">&#128194; ${fileCount} file${fileCount !== 1 ? 's' : ''} &#9662;</button>` : `<span style="color:var(--muted);font-size:11px">No files</span>`}</td>
+        <td>${fmtDate(r.createdAt)}</td>
+        <td class="btn-group">
+          <button class="btn btn-sm" onclick="editReport('${r._id}','${esc(r.label||'')}','${esc(r.notes||'')}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteReport('${r._id}','${esc(r.version)}')">Delete</button>
+        </td>
+      </tr>
+      <tr id="attach-row-${idx}" style="display:none"><td colspan="8" style="padding:0;background:#0f172a"><div id="attach-content-${idx}" style="padding:16px 20px"></div></td></tr>`);
+    });
+    tbody.innerHTML = rows.join('');
   } catch(e) { console.error(e); }
+}
+
+function toggleAttachments(idx) {
+  const row = document.getElementById('attach-row-' + idx);
+  const btn = document.getElementById('attach-btn-' + idx);
+  const content = document.getElementById('attach-content-' + idx);
+  if (!row || !content) return;
+  const open = row.style.display === 'none';
+  row.style.display = open ? '' : 'none';
+  if (btn) btn.innerHTML = btn.innerHTML.replace(open ? '&#9662;' : '&#9652;', open ? '&#9652;' : '&#9662;');
+  if (open && !content.dataset.loaded) {
+    renderReportAttachments(idx);
+    content.dataset.loaded = '1';
+  }
+}
+
+function renderReportAttachments(idx) {
+  const r = window._adminReports?.[idx];
+  if (!r) return;
+  const el = document.getElementById('attach-content-' + idx);
+  const files = r.files || [];
+  if (!files.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px">No attachments.</div>'; return; }
+
+  // Group by type — screenshots excluded from admin view
+  const htmls = files.filter(f => /\.(html|htm)$/i.test(f.originalName || '') && f.url);
+  const others = files.filter(f => f.url && !/\.(html|htm|png|jpg|jpeg|gif|webp)$/i.test(f.originalName || ''));
+  const noUrl = files.filter(f => !f.url && !/\.(png|jpg|jpeg|gif|webp)$/i.test(f.originalName || ''));
+
+  function sizeFmt(b) {
+    if (b == null) return '';
+    if (b < 1024) return b + ' B';
+    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+    if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + ' MB';
+    return (b/1024/1024/1024).toFixed(2) + ' GB';
+  }
+
+  function fileCard(f, cls) {
+    const ext = ((f.originalName || '').split('.').pop() || '').toUpperCase();
+    return `<a href="${f.url}" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:.15s;overflow:hidden" onmouseover="this.style.borderColor='#6366f1'" onmouseout="this.style.borderColor='#334155'">
+      <div style="width:36px;height:36px;background:${cls === 'html' ? '#6366f1' : cls === 'image' ? '#10b981' : '#94a3b8'};color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0">${ext}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.originalName)}</div>
+        <div style="font-size:10px;color:#64748b">${sizeFmt(f.size)}</div>
+      </div>
+    </a>`;
+  }
+
+  let html = '';
+  if (htmls.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">&#128196; HTML Reports (${htmls.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-bottom:16px">${htmls.map(f => fileCard(f, 'html')).join('')}</div>`;
+  }
+  if (others.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">&#128206; Other Files (${others.length})</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-bottom:16px">${others.map(f => fileCard(f, 'other')).join('')}</div>`;
+  }
+  if (noUrl.length) {
+    html += `<div style="font-size:10px;color:#64748b;margin-top:8px">${noUrl.length} file(s) without cloud URL (storage issue).</div>`;
+  }
+  el.innerHTML = html;
 }
 
 async function deleteReport(id, version) {
@@ -586,6 +729,7 @@ function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-GB',{d
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadOverview();
+updateUploadButton();
 </script>
 </body>
 </html>
