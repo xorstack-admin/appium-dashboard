@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 
 const failedStepSchema = new mongoose.Schema({
   step: Number, name: String, status: String, time: Number,
+  stepCounter: String,
+  screenshots: [String], // filenames, e.g. ["93.PNG"]
+  screenshotUrls: [String], // Cloudinary URLs after upload
 }, { _id: false });
 
 const subScenarioSchema = new mongoose.Schema({

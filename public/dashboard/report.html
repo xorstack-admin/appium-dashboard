@@ -485,10 +485,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="ctrl-wrap"><select class="ctrl-select" id="versionSelect" onchange="loadVersion(this.value)" style="min-width:190px"><option>Loading...</option></select></div>
     <div class="ctrl-meta" id="buildMeta"></div>
     <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:center">
+      <button class="ctrl-btn primary" onclick="openCompareModal()" title="Compare Versions">&#8644; Compare Versions</button>
       <div class="analytics-menu-wrap">
         <button class="ctrl-btn primary analytics-trigger" onclick="toggleAnalyticsMenu(event)" title="Analytics Tools">&#128202; Analytics <span style="font-size:10px;margin-left:2px">&#9662;</span></button>
         <div class="analytics-menu" id="analyticsMenu">
-          <button class="analytics-item" onclick="openCompareModal();closeAnalyticsMenu()">&#8644; <span>Compare Versions</span></button>
           <button class="analytics-item" onclick="openRootCauseModal();closeAnalyticsMenu()">&#128269; <span>Root Cause</span></button>
           <button class="analytics-item" onclick="openVizModal();closeAnalyticsMenu()">&#128200; <span>Visualizations</span></button>
           <button class="analytics-item" onclick="openPredictiveModal();closeAnalyticsMenu()">&#128302; <span>Predictive</span></button>
@@ -897,22 +897,31 @@ function renderScenarioTable(scenarios){
 
     items.forEach((s, i) => {
       const statusCls = s.overall === 'Passed' ? 'badge-pass' : 'badge-fail';
-      const rowStyle = s.overall === 'Failed' ? 'background:rgba(239,68,68,.03)' : '';
+      const isFailed = s.overall === 'Failed';
+      const hasScreenshots = isFailed && (s.failed || []).some(f => (f.screenshotUrls || []).length > 0);
+      const rowStyle = isFailed ? 'background:rgba(239,68,68,.03);' + (hasScreenshots ? 'cursor:pointer' : '') : '';
       const durText = typeof s.duration === 'number' ? s.duration.toFixed(2) + 's' : '--';
       const appText = s.app || '—';
       const validation = s.validationSummary || '';
       const validationShort = validation.length > 120 ? validation.slice(0, 120) + '...' : validation;
-      html += `<tr class="sc-row" style="${rowStyle}">
+      const rowId = `${catId}-row-${i}`;
+
+      const nameCell = hasScreenshots
+        ? `<td style="font-weight:500">${esc(s.name)} <span class="screenshot-badge" style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 8px;background:#fee2e2;color:#991b1b;border-radius:10px;font-size:10px;font-weight:700">&#128248; View screenshot <span id="chev-${rowId}" style="display:inline-block;transition:.2s">&#9662;</span></span></td>`
+        : `<td style="font-weight:500">${esc(s.name)}</td>`;
+
+      const clickHandler = hasScreenshots ? ` onclick="toggleScreenshotRow('${rowId}')"` : '';
+      html += `<tr class="sc-row"${clickHandler} style="${rowStyle}">
         <td style="color:var(--muted);font-family:monospace">${i + 1}</td>
-        <td style="font-weight:500">${esc(s.name)}</td>
+        ${nameCell}
         <td style="color:var(--muted);font-size:12px">${esc(appText)}</td>
         <td style="font-size:11px;color:var(--text);line-height:1.5;max-width:420px" title="${esc(validation)}">${esc(validationShort) || '<span style="color:var(--muted)">—</span>'}</td>
         <td><span class="badge ${statusCls}">${s.overall}</span></td>
         <td style="text-align:right;font-family:monospace;color:var(--muted)">${durText}</td>
       </tr>`;
 
-      // Show failure details if any
-      if (s.overall === 'Failed' && s.failed && s.failed.length > 0) {
+      // Show failure reason (always)
+      if (isFailed && s.failed && s.failed.length > 0) {
         for (const f of s.failed) {
           const stepName = f.name || '';
           const shortName = stepName.length > 200 ? stepName.slice(0, 200) + '...' : stepName;
@@ -924,6 +933,20 @@ function renderScenarioTable(scenarios){
             <td style="text-align:right;background:#fef2f2"></td>
           </tr>`;
         }
+      }
+
+      // Hidden screenshot row — expands on click
+      if (hasScreenshots) {
+        const allUrls = (s.failed || []).flatMap(f => f.screenshotUrls || []);
+        const uniqueUrls = [...new Set(allUrls)];
+        let shots = '<div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 32px;background:#fef7f7;border-top:1px solid #fee2e2">';
+        uniqueUrls.forEach(url => {
+          shots += `<a href="${url}" target="_blank" style="display:block;border:2px solid #fecaca;border-radius:8px;overflow:hidden;transition:.15s;text-decoration:none" onmouseover="this.style.borderColor='#ef4444';this.style.transform='scale(1.02)'" onmouseout="this.style.borderColor='#fecaca';this.style.transform=''">
+            <img src="${url}" style="display:block;max-width:220px;max-height:320px;object-fit:contain;background:#fff" loading="lazy">
+          </a>`;
+        });
+        shots += '</div>';
+        html += `<tr id="${rowId}" class="fail-screenshot-row" style="display:none"><td colspan="6" style="padding:0;background:#fef7f7">${shots}</td></tr>`;
       }
     });
     html += '</tbody></table></div></div>';
@@ -940,6 +963,15 @@ function renderScenarioTable(scenarios){
       toggleCategory(catId, true);
     }
   }
+}
+
+function toggleScreenshotRow(rowId) {
+  const row = document.getElementById(rowId);
+  const chev = document.getElementById('chev-' + rowId);
+  if (!row) return;
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : '';
+  if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 function togglePreview(id, forceOpen) {

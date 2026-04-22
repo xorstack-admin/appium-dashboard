@@ -220,6 +220,29 @@ router.post('/upload', (req, res, next) => {
       await Promise.all(batch.map((f, bIdx) => uploadOne(f, i + bIdx)));
     }
 
+    // Build a map of uploaded screenshot filename → Cloudinary URL
+    // so we can link failed steps to their screenshots
+    const screenshotMap = new Map();
+    for (const ref of fileRefs) {
+      if (ref.type === 'screenshot' && ref.url && ref.originalName) {
+        // Case-insensitive match on filename
+        screenshotMap.set(ref.originalName.toLowerCase(), ref.url);
+      }
+    }
+
+    // Attach Cloudinary URLs to failed steps' screenshots
+    for (const run of scenarioRuns) {
+      for (const sub of run.subScenarios || []) {
+        for (const f of sub.failed || []) {
+          if (f.screenshots && f.screenshots.length) {
+            f.screenshotUrls = f.screenshots
+              .map(name => screenshotMap.get(String(name).toLowerCase()))
+              .filter(Boolean);
+          }
+        }
+      }
+    }
+
     // Enrich with scenario categories
     const scenarioDoc = await Scenario.findOne({ platform });
     const idx = scenarioDoc ? buildScenarioIndex(scenarioDoc) : new Map();

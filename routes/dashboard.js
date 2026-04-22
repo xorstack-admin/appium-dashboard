@@ -54,7 +54,13 @@ function cleanScenarios(report) {
         validationSummary: sub.validationSummary || '',
         overall: sub.overall,
         duration: sub.duration != null ? sub.duration : (sub.totalSteps > 0 ? null : 0),
-        failed: (sub.failed || []).map(f => ({ step: f.step, name: f.name, time: f.time })),
+        failed: (sub.failed || []).map(f => ({
+          step: f.step,
+          name: f.name,
+          time: f.time,
+          screenshots: f.screenshots || [],
+          screenshotUrls: f.screenshotUrls || [],
+        })),
       });
     }
   }

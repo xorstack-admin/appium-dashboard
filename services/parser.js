@@ -290,6 +290,19 @@ function parseIndividualReport(content, filename) {
 
   const overall = /alert-danger.*?Failed/s.test(content) ? 'Failed' : 'Passed';
 
+  // Pre-extract data-step-counter → screenshot filename mapping
+  // Each failed/passed step block has data-step-counter="N" and references a matching N.PNG
+  const stepBlockRe = /data-step-counter="(\d+)"[\s\S]*?(?=data-step-counter="|$)/g;
+  const stepScreenshotMap = new Map(); // stepCounter -> [screenshot filenames]
+  let blockMatch;
+  while ((blockMatch = stepBlockRe.exec(content)) !== null) {
+    const counter = blockMatch[1];
+    const block = blockMatch[0];
+    const imgs = [...block.matchAll(/src="[^"]*?\/([^"\/]+\.(?:png|jpg|jpeg|gif|webp))"/gi)]
+      .map(m => m[1]);
+    if (imgs.length > 0) stepScreenshotMap.set(counter, [...new Set(imgs)]);
+  }
+
   const allSteps = [];
   let stepMatch;
   let stepNum = 0;
@@ -303,6 +316,19 @@ function parseIndividualReport(content, filename) {
       time: parseFloat(stepMatch[4]),
     });
   }
+
+  // Match each step to its data-step-counter by sequential position
+  // (STEP_PATTERN and data-step-counter blocks follow the same order in HTML)
+  const counters = [...stepScreenshotMap.keys()];
+  allSteps.forEach((s, i) => {
+    const counter = counters[i];
+    if (counter) {
+      s.stepCounter = counter;
+      s.screenshots = stepScreenshotMap.get(counter) || [];
+    } else {
+      s.screenshots = [];
+    }
+  });
 
   const subScenariosRaw = [];
   let currentSub = null;

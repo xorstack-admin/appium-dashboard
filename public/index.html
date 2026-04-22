@@ -45,7 +45,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+        <div style="position:relative">
+          <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password" style="padding-right:44px">
+          <button type="button" id="pwToggle" onclick="togglePassword()" aria-label="Toggle password visibility" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;padding:6px 10px;color:var(--muted);font-size:16px;border-radius:6px;transition:.15s" onmouseover="this.style.color='var(--accent)';this.style.background='rgba(99,102,241,.1)'" onmouseout="this.style.color='var(--muted)';this.style.background='transparent'">&#128065;</button>
+        </div>
       </div>
       <button class="btn" type="submit" id="loginBtn">Sign In</button>
     </form>
@@ -56,6 +59,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
+function togglePassword() {
+  const input = document.getElementById('password');
+  const btn = document.getElementById('pwToggle');
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.innerHTML = isHidden ? '&#128064;' : '&#128065;'; // open eye vs closed eye
+}
+
 // If already logged in, redirect
 const token = localStorage.getItem('vya_token');
 const user = JSON.parse(localStorage.getItem('vya_user') || 'null');
