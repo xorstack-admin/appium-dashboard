@@ -13,7 +13,7 @@ async function seed() {
 
   const admin = await User.create({
     name: 'Admin',
-    email: 'admin@carpacsoft.com',
+    email: 'admin@vyapy.com',
     password: 'admin123',
     role: 'admin',
   });

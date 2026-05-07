@@ -100,12 +100,18 @@ router.post('/upload', (req, res, next) => {
 
     // Parse HTML reports
     const scenarioRuns = [];
+    const parseWarnings = []; // [{ file, reason }]
     for (const file of htmlFiles) {
       try {
         const content = file.buffer.toString('utf-8');
-        scenarioRuns.push(parseHTML(content, file.originalname));
+        const parsed = parseHTML(content, file.originalname);
+        scenarioRuns.push(parsed);
+        if (!parsed.subScenarios || parsed.subScenarios.length === 0) {
+          parseWarnings.push({ file: file.originalname, reason: 'No scenarios extracted — unrecognized HTML format' });
+        }
       } catch (parseErr) {
         console.error(`Warning: failed to parse ${file.originalname}:`, parseErr.message);
+        parseWarnings.push({ file: file.originalname, reason: `Parse error: ${parseErr.message}` });
       }
     }
 
@@ -116,9 +122,12 @@ router.post('/upload', (req, res, next) => {
         const parsed = parseXML(content, file.originalname);
         if (parsed.subScenarios && parsed.subScenarios.length > 0) {
           scenarioRuns.push(parsed);
+        } else {
+          parseWarnings.push({ file: file.originalname, reason: 'No scenarios extracted from XML' });
         }
       } catch (xmlErr) {
         console.error(`Warning: failed to parse ${file.originalname}:`, xmlErr.message);
+        parseWarnings.push({ file: file.originalname, reason: `XML parse error: ${xmlErr.message}` });
       }
     }
 
@@ -179,6 +188,7 @@ router.post('/upload', (req, res, next) => {
         }
       } catch (jsonErr) {
         console.error(`Warning: failed to parse ${file.originalname}:`, jsonErr.message);
+        parseWarnings.push({ file: file.originalname, reason: `JSON parse error: ${jsonErr.message}` });
       }
     }
 
@@ -290,7 +300,7 @@ router.post('/upload', (req, res, next) => {
     if (io) io.emit('new-report', { id: report._id, env, platform, version, passRate, label: report.label });
     await checkAlerts(report, io);
 
-    res.status(201).json({ report });
+    res.status(201).json({ report, parseWarnings });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

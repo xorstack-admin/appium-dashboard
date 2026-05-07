@@ -113,7 +113,7 @@ tr:last-child td{border-bottom:none}
     <div class="nav-item" onclick="showSection('logs')"><span class="nav-icon">&#9201;</span><span>Activity Logs</span></div>
   </div>
   <div class="sidebar-footer">
-    <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail">admin@carpacsoft.com</span></div>
+    <div class="user-info"><strong id="userName">Admin</strong><span id="userEmail">admin@vyapy.com</span></div>
     <button class="logout-btn" onclick="logout()">Sign Out</button>
   </div>
 </div>
@@ -384,13 +384,18 @@ async function uploadReport() {
 
   try {
     const data = await uploadWithProgress('/api/admin/upload', fd);
-    document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--pass)">&#10003; Upload successful! Pass rate: ${data.report.passRate}% (${data.report.totalPassed} passed, ${data.report.totalFailed} failed)</span>`;
+    const warns = (data.parseWarnings || []);
+    let html = `<span style="color:var(--pass)">&#10003; Upload successful! Pass rate: ${data.report.passRate}% (${data.report.totalPassed} passed, ${data.report.totalFailed} failed)</span>`;
+    if (warns.length) {
+      html += `<div style="margin-top:10px;padding:10px 12px;border:1px solid #f59e0b;background:rgba(245,158,11,.08);border-radius:8px;color:#d97706;font-size:13px"><b>&#9888; ${warns.length} file(s) parsed with no scenarios:</b><ul style="margin:6px 0 0 18px;padding:0">${warns.map(w => `<li>${esc(w.file)} — ${esc(w.reason)}</li>`).join('')}</ul></div>`;
+    }
+    document.getElementById('uploadStatus').innerHTML = html;
     uploadFiles = [];
     renderFileList();
     document.getElementById('upVersion').value = '';
     document.getElementById('upLabel').value = '';
     document.getElementById('upNotes').value = '';
-    toast('Report uploaded successfully!');
+    toast(warns.length ? `Uploaded with ${warns.length} warning(s)` : 'Report uploaded successfully!');
   } catch(e) {
     document.getElementById('uploadStatus').innerHTML = `<span style="color:var(--fail)">${esc(e.message)}</span>`;
   }

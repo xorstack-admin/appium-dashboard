@@ -86,23 +86,28 @@ function parseVyaReport(content, filename) {
     const rowContent = splits[i];
     // This now contains everything from one outer tr's start until next outer tr or end
 
-    // Extract test case name (first td — but not the ones inside nested tables)
-    // Use pattern: <td style="..font-size:15px..font-weight:500..">...</td>
-    const tcMatch = rowContent.match(/<td[^>]*style="[^"]*font-size:\s*15px[^"]*font-weight:\s*500[^"]*"[^>]*>([\s\S]*?)<\/td>/);
+    // Extract test case name. Two markups exist:
+    //   v1 (older): <td style="..font-size:15px..font-weight:500..">NAME</td>
+    //   v2 (newer): <td class="td-cell td-name">NAME</td> or class="td-name ..."
+    const tcMatch = rowContent.match(/<td[^>]*class="[^"]*\btd-name\b[^"]*"[^>]*>([\s\S]*?)<\/td>/) ||
+                    rowContent.match(/<td[^>]*style="[^"]*font-size:\s*15px[^"]*font-weight:\s*500[^"]*"[^>]*>([\s\S]*?)<\/td>/);
     if (!tcMatch) continue;
 
     // Find status
     const statusMatch = rowContent.match(/<span[^>]*background:\s*#(?:e74c3c|27ae60)[^"]*"[^>]*>(PASSED|FAILED|Passed|Failed)<\/span>/);
     if (!statusMatch) continue;
 
-    // Extract app name (td with class="td-c" that's not the status one)
-    const appMatch = rowContent.match(/<td[^>]*class="td-c"[^>]*>([^<]+)<\/td>/);
+    // Extract app name (first td with class="td-c" — that's the App column; the next td-c holds the status badge span)
+    const appMatch = rowContent.match(/<td[^>]*class="[^"]*\btd-c\b[^"]*"[^>]*>([^<]+)<\/td>/);
 
-    // Extract failed-at: look for the td with color:#c0392b
-    const failedAtMatch = rowContent.match(/<td[^>]*color:\s*#c0392b[^"]*"[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/);
+    // Extract failed-at. Two markups:
+    //   v1: <td style="..color:#c0392b..">...</td>
+    //   v2: <td class="td-cell td-fail">...</td>
+    const failedAtMatch = rowContent.match(/<td[^>]*class="[^"]*\btd-fail\b[^"]*"[^>]*>([\s\S]*?)<\/td>\s*(?:<\/tr>|$)/) ||
+                          rowContent.match(/<td[^>]*color:\s*#c0392b[^"]*"[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/);
 
-    // Extract validation: td with class="td-bill"
-    const validationMatch = rowContent.match(/<td[^>]*class="td-bill"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*color:\s*#c0392b/);
+    // Extract validation: td with class containing td-bill
+    const validationMatch = rowContent.match(/<td[^>]*class="[^"]*\btd-bill\b[^"]*"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*(?:class="[^"]*\btd-fail\b|color:\s*#c0392b)/);
 
     const testCase = tcMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&euro;/g, '€').replace(/&#\d+;/g, '').replace(/\s+/g, ' ').trim();
     const app = appMatch ? appMatch[1].trim() : '';
@@ -385,13 +390,145 @@ function parseIndividualReport(content, filename) {
 
 function parseHTML(content, filename) {
   const format = detectFormat(content);
+  let result;
   if (format === 'vya') {
-    return parseVyaReport(content, filename);
+    result = parseVyaReport(content, filename);
+    if (!result.subScenarios.length) {
+      const fallback = parseVyaGeneric(content, filename);
+      if (fallback.subScenarios.length) result = fallback;
+    }
+  } else if (format === 'summary') {
+    result = parseSummaryReport(content, filename);
+  } else {
+    result = parseIndividualReport(content, filename);
   }
-  if (format === 'summary') {
-    return parseSummaryReport(content, filename);
+  // Last-resort generic table scan when nothing matched.
+  if (!result.subScenarios.length) {
+    const fallback = parseVyaGeneric(content, filename);
+    if (fallback.subScenarios.length) result = fallback;
   }
-  return parseIndividualReport(content, filename);
+  if (!result.subScenarios.length) {
+    console.warn(`[parser] ${filename}: no scenarios extracted (format=${format})`);
+  }
+  return result;
+}
+
+// Iterate top-level <tr>...</tr> blocks inside `body`, ignoring rows inside nested <table>s.
+function topLevelTrs(body) {
+  const rows = [];
+  let depth = 0, rowStart = -1;
+  const re = /<(\/?)(\w+)\b[^>]*>/g;
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    const closing = m[1] === '/';
+    const tag = m[2].toLowerCase();
+    if (tag === 'table') depth += closing ? -1 : 1;
+    else if (tag === 'tr' && depth === 0) {
+      if (closing && rowStart >= 0) { rows.push(body.slice(rowStart, m.index)); rowStart = -1; }
+      else if (!closing) rowStart = m.index + m[0].length;
+    }
+  }
+  return rows;
+}
+
+// Iterate top-level <td>...</td> blocks inside a row, ignoring tds inside nested <table>s.
+function topLevelTds(row) {
+  const cells = [];
+  let depth = 0, cellStart = -1;
+  const re = /<(\/?)(\w+)\b[^>]*>/g;
+  let m;
+  while ((m = re.exec(row)) !== null) {
+    const closing = m[1] === '/';
+    const tag = m[2].toLowerCase();
+    if (tag === 'table') depth += closing ? -1 : 1;
+    else if (tag === 'td' && depth === 0) {
+      if (closing && cellStart >= 0) { cells.push(row.slice(cellStart, m.index)); cellStart = -1; }
+      else if (!closing) cellStart = m.index + m[0].length;
+    }
+  }
+  return cells;
+}
+
+function stripHtml(s) {
+  return String(s || '')
+    .replace(/<table[\s\S]*?<\/table>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&euro;/g, '€')
+    .replace(/&#\d+;/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Generic 5-column "Test Case | App | Status | Validation | Failed At" parser.
+// Position-based: tolerant of class/style markup variants. Used as fallback when
+// the strict Vya parser returns no rows.
+function parseVyaGeneric(content, filename) {
+  const mainName = filename.replace(/\.html?$/i, '').replace(/[_-]/g, ' ').trim();
+  const subScenarios = [];
+
+  const tbodyMatch = content.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+  const body = tbodyMatch ? tbodyMatch[1] : content;
+
+  for (const row of topLevelTrs(body)) {
+    // Need a status badge somewhere in the row to count it as a scenario.
+    const statusMatch = row.match(/\b(PASSED|FAILED|Passed|Failed)\b/);
+    if (!statusMatch) continue;
+    const status = /failed/i.test(statusMatch[1]) ? 'Failed' : 'Passed';
+
+    const cells = topLevelTds(row);
+    if (cells.length < 2) continue;
+
+    const nameText = stripHtml(cells[0]);
+    if (!nameText || /^test case$/i.test(nameText)) continue;
+
+    const app = cells.length >= 3 ? stripHtml(cells[1]) : '';
+    // Validation = second-to-last cell when there are 4+; failed-at = last cell when failed.
+    const validationText = cells.length >= 4 ? stripHtml(cells[cells.length - 2]) : '';
+    const failedAtText = status === 'Failed' && cells.length >= 4 ? stripHtml(cells[cells.length - 1]) : '';
+
+    const failed = [];
+    if (status === 'Failed' && failedAtText) {
+      failed.push({
+        step: subScenarios.length + 1,
+        name: failedAtText.length > 400 ? failedAtText.slice(0, 400) + '...' : failedAtText,
+        status: 'Failed',
+        time: 0,
+      });
+    }
+
+    subScenarios.push({
+      name: nameText,
+      category: mainName,
+      app,
+      validationSummary: validationText.length > 300 ? validationText.slice(0, 300) + '...' : validationText,
+      duration: 0,
+      totalSteps: 1,
+      passedSteps: status === 'Passed' ? 1 : 0,
+      failedSteps: status === 'Failed' ? 1 : 0,
+      slowSteps: 0,
+      overall: status,
+      failed,
+      slow: [],
+    });
+  }
+
+  const passedCount = subScenarios.filter(s => s.overall === 'Passed').length;
+  const failedCount = subScenarios.filter(s => s.overall === 'Failed').length;
+
+  return {
+    scenario: mainName,
+    device: '', runStarted: '', totalTime: '',
+    overall: failedCount > 0 ? 'Failed' : 'Passed',
+    totalSteps: subScenarios.length,
+    passedSteps: passedCount,
+    failedSteps: failedCount,
+    slowSteps: 0,
+    avgDuration: 0,
+    skippedCount: 0,
+    subScenarios,
+  };
 }
 
 // ── XML parsing (Appium Studio test definition files) ────────────────────────
