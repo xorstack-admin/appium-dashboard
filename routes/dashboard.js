@@ -11,18 +11,26 @@ const { predictiveAnalysis } = require('../services/predictiveService');
 const { failureIntelligence, getScenarioTimeline } = require('../services/failureIntelService');
 const { generateBugTickets, ownerRouting, flakyQuarantine, multiVersionCompare } = require('../services/workflowService');
 const { forensics, scenarioHistory, errorDiff } = require('../services/forensicsService');
+const { audienceMatch } = require('../services/audienceFilter');
 
 const router = express.Router();
 router.use(auth);
 
 const VALID_ENVS = ['staging', 'production'];
 const VALID_PLATFORMS = ['ios', 'android'];
+const VALID_AUDIENCES = ['consumer', 'business'];
 
 function validateEP(req, res, next) {
   const { env, platform } = req.params;
   if (!VALID_ENVS.includes(env)) return res.status(400).json({ error: `Invalid env "${env}"` });
   if (!VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: `Invalid platform "${platform}"` });
   next();
+}
+
+// Parse optional ?audience= filter from req.query. Returns 'consumer' | 'business' | null.
+function aud(req) {
+  const a = String(req.query.audience || '').toLowerCase();
+  return VALID_AUDIENCES.includes(a) ? a : null;
 }
 
 // ── Helper: extract clean scenarios from a report ────────────────────────────
@@ -106,26 +114,132 @@ router.get('/overview', async (req, res) => {
 });
 
 // ── Versions list ────────────────────────────────────────────────────────────
+// Same underlying Report docs feed both audience tracks, but each track sees
+// the labels from a different field:
+//   audience=consumer (or omitted) → group by `version`
+//   audience=business              → group by `businessVersion` (falls back to `version`)
+// Returns grouped output with `runs[]` newest-first per version label.
 router.get('/:env/:platform/versions', validateEP, async (req, res) => {
   try {
     const { env, platform } = req.params;
+    const a = aud(req);
+    const useBusinessLabel = (a === 'business');
     const reports = await Report.find({ env, platform })
-      .select('version label notes createdAt runDate passRate totalPassed totalFailed totalScenarios')
+      .select('version businessVersion label notes createdAt runDate passRate totalPassed totalFailed totalScenarios')
       .sort({ createdAt: -1 });
-    const versions = reports.map(r => ({
-      version: r.version, label: r.label, notes: r.notes || '', savedAt: r.createdAt,
-      runDate: r.runDate, passRate: r.passRate,
-      passed: r.totalPassed, failed: r.totalFailed,
-    }));
+
+    const map = new Map();
+    for (const r of reports) {
+      const audLabel = useBusinessLabel ? (r.businessVersion || r.version) : r.version;
+      if (!map.has(audLabel)) map.set(audLabel, { version: audLabel, runs: [] });
+      // Suppress label when it equals the consumer version — the old admin
+      // route auto-set label=version which would otherwise mask the business
+      // version on the business track. Only surface the user's real label.
+      const userLabel = (r.label && r.label !== r.version) ? r.label : null;
+      map.get(audLabel).runs.push({
+        runId: r._id,
+        label: userLabel,
+        notes: r.notes || '',
+        savedAt: r.createdAt,
+        runDate: r.runDate,
+        passRate: r.passRate,
+        passed: r.totalPassed,
+        failed: r.totalFailed,
+        totalScenarios: r.totalScenarios,
+      });
+    }
+    const versions = [...map.values()].map(v => {
+      const latest = v.runs[0];
+      return {
+        version: v.version,
+        label: latest.label,
+        notes: latest.notes,
+        savedAt: latest.savedAt,
+        runDate: latest.runDate,
+        passRate: latest.passRate,
+        passed: latest.passed,
+        failed: latest.failed,
+        totalRuns: v.runs.length,
+        latestRunId: latest.runId,
+        runs: v.runs,
+      };
+    });
+    versions.sort((x, y) => new Date(y.savedAt) - new Date(x.savedAt));
     res.json({ versions });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Fetch a specific report by Mongo _id (multi-run support) ─────────────────
+router.get('/run/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !id.match(/^[a-f0-9]{24}$/i)) return res.status(400).json({ error: 'Invalid run id' });
+    const report = await Report.findById(id);
+    if (!report) return res.status(404).json({ error: 'Run not found' });
+
+    const scenarios = cleanScenarios(report);
+    const byCategory = {};
+    for (const s of scenarios) {
+      const c = s.category || 'Uncategorized';
+      if (!byCategory[c]) byCategory[c] = { category: c, total: 0, passed: 0, failed: 0 };
+      byCategory[c].total++;
+      if (s.overall === 'Passed') byCategory[c].passed++; else byCategory[c].failed++;
+    }
+    const categories = Object.values(byCategory).map(c => ({
+      ...c,
+      passRate: c.total > 0 ? parseFloat(((c.passed / c.total) * 100).toFixed(1)) : 0,
+    })).sort((x, y) => y.total - x.total);
+
+    const total = scenarios.length;
+    const passed = scenarios.filter(s => s.overall === 'Passed').length;
+    const failed = scenarios.filter(s => s.overall === 'Failed').length;
+    const durations = scenarios.map(s => s.duration).filter(d => typeof d === 'number');
+    const avgDuration = durations.length > 0 ? parseFloat((durations.reduce((a, b) => a + b, 0) / durations.length).toFixed(2)) : 0;
+
+    res.json({
+      scenarios,
+      categories,
+      stats: {
+        total, passed, failed,
+        passRate: total > 0 ? parseFloat(((passed / total) * 100).toFixed(1)) : 0,
+        avgDuration,
+      },
+      meta: {
+        runId: report._id,
+        env: report.env,
+        platform: report.platform,
+        audience: report.audience || 'consumer',
+        version: report.version,
+        label: report.label,
+        notes: report.notes || '',
+        runDate: report.runDate,
+        savedAt: report.createdAt,
+      },
+      files: report.files || [],
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── Clean report (for user dashboard table) ──────────────────────────────────
+// Audience-aware: when ?audience=... is passed, scoped to that audience.
+// Multi-run: when ?runId=... is passed, fetches that specific run; otherwise
+// returns the most recent run for that {env, platform, audience, version}.
 router.get('/:env/:platform/report/:version', validateEP, async (req, res) => {
   try {
     const { env, platform, version } = req.params;
-    const report = await Report.findOne({ env, platform, version });
+    const a = aud(req);
+    const runId = String(req.query.runId || '').trim();
+
+    let report;
+    if (runId && runId.match(/^[a-f0-9]{24}$/i)) {
+      report = await Report.findById(runId);
+    } else {
+      // Match the appropriate label field for the audience track.
+      const filter = { env, platform };
+      if (a === 'business') filter.businessVersion = version;
+      else filter.version = version;
+      report = await Report.findOne(filter).sort({ createdAt: -1 });
+    }
     if (!report) return res.status(404).json({ error: `Version "${version}" not found` });
 
     const scenarios = cleanScenarios(report);
@@ -158,6 +272,10 @@ router.get('/:env/:platform/report/:version', validateEP, async (req, res) => {
         avgDuration,
       },
       meta: {
+        runId: report._id,
+        env: report.env,
+        platform: report.platform,
+        audience: report.audience || 'consumer',
         version: report.version,
         label: report.label,
         notes: report.notes || '',
@@ -182,7 +300,9 @@ router.get('/:env/:platform/daily', validateEP, async (req, res) => {
   try {
     const { env, platform } = req.params;
     const { from, to } = req.query;
+    const a = aud(req);
     const filter = { env, platform };
+    if (a) filter.audience = audienceMatch(a);
     if (from || to) {
       filter.runDate = {};
       if (from) filter.runDate.$gte = new Date(from);
@@ -222,9 +342,11 @@ router.get('/:env/:platform/daily', validateEP, async (req, res) => {
 router.get('/analytics', async (req, res) => {
   try {
     const { env, platform, version } = req.query;
+    const a = aud(req);
     const filter = {};
     if (env && VALID_ENVS.includes(env)) filter.env = env;
     if (platform && VALID_PLATFORMS.includes(platform)) filter.platform = platform;
+    if (a) filter.audience = audienceMatch(a);
 
     const reports = await Report.find(filter)
       .select('env platform version label passRate totalPassed totalFailed totalScenarios createdAt runDate scenarios')
@@ -391,7 +513,7 @@ router.get('/compare', async (req, res) => {
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) {
       return res.status(400).json({ error: 'Invalid env or platform' });
     }
-    const result = await compareVersions(env, platform, v1, v2);
+    const result = await compareVersions(env, platform, v1, v2, { audience: aud(req) });
     res.json(result);
   } catch (err) {
     res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message });
@@ -403,7 +525,7 @@ router.get('/compare/export', async (req, res) => {
   try {
     const { env, platform, v1, v2 } = req.query;
     if (!env || !platform || !v1 || !v2) return res.status(400).json({ error: 'env, platform, v1, v2 are required' });
-    const result = await compareVersions(env, platform, v1, v2);
+    const result = await compareVersions(env, platform, v1, v2, { audience: aud(req) });
     const headers = ['Scenario', 'Category', `${v1} Status`, `${v2} Status`, 'Change Type', `${v1} Failure`, `${v2} Failure`, 'Same Failure'];
     const rows = result.details.map(r => [
       r.name, r.category, r.v1Status || '-', r.v2Status || '-', r.changeType,
@@ -426,7 +548,7 @@ router.get('/flaky', async (req, res) => {
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) {
       return res.status(400).json({ error: 'Invalid env or platform' });
     }
-    const result = await detectFlakyTests(env, platform);
+    const result = await detectFlakyTests(env, platform, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -435,9 +557,11 @@ router.get('/flaky', async (req, res) => {
 router.get('/insights', async (req, res) => {
   try {
     const { env, platform, version } = req.query;
+    const a = aud(req);
     const filter = {};
     if (env && VALID_ENVS.includes(env)) filter.env = env;
     if (platform && VALID_PLATFORMS.includes(platform)) filter.platform = platform;
+    if (a) filter.audience = audienceMatch(a);
 
     const reports = await Report.find(filter).sort({ createdAt: -1 }).limit(20);
     if (!reports.length) return res.json({ insights: [{ type: 'info', message: 'No reports yet to analyze.' }] });
@@ -455,7 +579,9 @@ router.get('/insights', async (req, res) => {
     // Optional: cross-platform stats for platform comparison rule
     let platformStats = null;
     if (env && !platform) {
-      const all = await Report.find({ env });
+      const xFilter = { env };
+      if (a) xFilter.audience = audienceMatch(a);
+      const all = await Report.find(xFilter);
       const stats = { ios: { passed: 0, failed: 0, total: 0 }, android: { passed: 0, failed: 0, total: 0 } };
       for (const r of all) {
         const p = stats[r.platform];
@@ -474,7 +600,7 @@ router.get('/insights', async (req, res) => {
     // Optional: flaky data
     let flakyData = null;
     if (env && platform) {
-      try { flakyData = await detectFlakyTests(env, platform); } catch (_) {}
+      try { flakyData = await detectFlakyTests(env, platform, { audience: a }); } catch (_) {}
     }
 
     const insights = generateInsights({ currentReport, previousReport, platformStats, flakyData });
@@ -488,7 +614,7 @@ router.get('/forensics', async (req, res) => {
     const { env, platform } = req.query;
     if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
-    const result = await forensics(env, platform);
+    const result = await forensics(env, platform, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -497,7 +623,7 @@ router.get('/forensics/scenario-history', async (req, res) => {
   try {
     const { env, platform, scenario } = req.query;
     if (!env || !platform || !scenario) return res.status(400).json({ error: 'env, platform, scenario required' });
-    const result = await scenarioHistory(env, platform, scenario);
+    const result = await scenarioHistory(env, platform, scenario, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
 });
@@ -506,7 +632,7 @@ router.get('/forensics/error-diff', async (req, res) => {
   try {
     const { env, platform, v1, v2, scenario } = req.query;
     if (!env || !platform || !v1 || !v2 || !scenario) return res.status(400).json({ error: 'env, platform, v1, v2, scenario required' });
-    const result = await errorDiff(env, platform, v1, v2, scenario);
+    const result = await errorDiff(env, platform, v1, v2, scenario, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
 });
@@ -517,7 +643,7 @@ router.get('/workflow/bug-tickets', async (req, res) => {
     const { env, platform, v1, v2 } = req.query;
     if (!env || !platform || !v1 || !v2) return res.status(400).json({ error: 'env, platform, v1, v2 required' });
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
-    const result = await generateBugTickets(env, platform, v1, v2);
+    const result = await generateBugTickets(env, platform, v1, v2, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
 });
@@ -527,7 +653,7 @@ router.get('/workflow/owners', async (req, res) => {
     const { env, platform, version } = req.query;
     if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
-    const result = await ownerRouting(env, platform, version);
+    const result = await ownerRouting(env, platform, version, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -537,7 +663,7 @@ router.get('/workflow/quarantine', async (req, res) => {
     const { env, platform } = req.query;
     if (!env || !platform) return res.status(400).json({ error: 'env and platform required' });
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
-    const result = await flakyQuarantine(env, platform);
+    const result = await flakyQuarantine(env, platform, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -549,7 +675,7 @@ router.get('/workflow/multi-compare', async (req, res) => {
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
     const versionList = versions.split(',').map(v => v.trim()).filter(Boolean);
     if (versionList.length < 2) return res.status(400).json({ error: 'Need at least 2 versions' });
-    const result = await multiVersionCompare(env, platform, versionList);
+    const result = await multiVersionCompare(env, platform, versionList, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
 });
@@ -560,7 +686,7 @@ router.get('/failure-intel', async (req, res) => {
     const { env, platform, version } = req.query;
     if (!env || !platform) return res.status(400).json({ error: 'env and platform are required' });
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) return res.status(400).json({ error: 'Invalid env or platform' });
-    const result = await failureIntelligence(env, platform, version);
+    const result = await failureIntelligence(env, platform, version, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -569,7 +695,7 @@ router.get('/failure-intel/timeline', async (req, res) => {
   try {
     const { env, platform, version, scenario } = req.query;
     if (!env || !platform || !version || !scenario) return res.status(400).json({ error: 'env, platform, version, scenario required' });
-    const result = await getScenarioTimeline(env, platform, version, scenario);
+    const result = await getScenarioTimeline(env, platform, version, scenario, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message }); }
 });
@@ -582,7 +708,7 @@ router.get('/predictive', async (req, res) => {
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) {
       return res.status(400).json({ error: 'Invalid env or platform' });
     }
-    const result = await predictiveAnalysis(env, platform, version);
+    const result = await predictiveAnalysis(env, platform, version, { audience: aud(req) });
     res.json(result);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -595,7 +721,7 @@ router.get('/root-cause', async (req, res) => {
     if (!VALID_ENVS.includes(env) || !VALID_PLATFORMS.includes(platform)) {
       return res.status(400).json({ error: 'Invalid env or platform' });
     }
-    const result = await rootCauseAnalysis(env, platform, version);
+    const result = await rootCauseAnalysis(env, platform, version, { audience: aud(req) });
     res.json(result);
   } catch (err) {
     res.status(err.message?.includes('not found') ? 404 : 500).json({ error: err.message });

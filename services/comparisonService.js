@@ -5,6 +5,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 function flattenScenarios(report) {
   const out = [];
@@ -84,8 +85,10 @@ function buildVerdict(s) {
 }
 
 // Compute stability score per scenario across recent history (0-100)
-async function computeStabilityMap(env, platform, limit = 15) {
-  const reports = await Report.find({ env, platform })
+async function computeStabilityMap(env, platform, opts = {}, limit = 15) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(limit);
@@ -117,11 +120,15 @@ async function computeStabilityMap(env, platform, limit = 15) {
   return stability;
 }
 
-async function compareVersions(env, platform, v1, v2) {
+async function compareVersions(env, platform, v1, v2, opts = {}) {
+  // v1 / v2 may be consumer labels (`version`) OR business labels (`businessVersion`).
+  const f1 = { env, platform, $or: [{ version: v1 }, { businessVersion: v1 }] };
+  const f2 = { env, platform, $or: [{ version: v2 }, { businessVersion: v2 }] };
+  if (opts.audience) { const m = audienceMatch(opts.audience); f1.audience = m; f2.audience = m; }
   const [report1, report2, stabilityMap] = await Promise.all([
-    Report.findOne({ env, platform, version: v1 }),
-    Report.findOne({ env, platform, version: v2 }),
-    computeStabilityMap(env, platform),
+    Report.findOne(f1).sort({ createdAt: -1 }),
+    Report.findOne(f2).sort({ createdAt: -1 }),
+    computeStabilityMap(env, platform, opts),
   ]);
 
   if (!report1 || !report2) {

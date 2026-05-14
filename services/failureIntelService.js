@@ -8,6 +8,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
 function flattenFailed(report) {
@@ -61,8 +62,12 @@ function toWordSet(msg) {
 }
 
 // ── 9. Failed Step Timeline — per scenario ───────────────────────────────────
-async function getScenarioTimeline(env, platform, version, scenarioName) {
-  const report = await Report.findOne({ env, platform, version });
+async function getScenarioTimeline(env, platform, version, scenarioName, opts = {}) {
+  // A "version" passed in here may be either the consumer's `version` label
+  // or the business's `businessVersion`. Match either.
+  const filter = { env, platform, $or: [{ version }, { businessVersion: version }] };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const report = await Report.findOne(filter).sort({ createdAt: -1 });
   if (!report) throw new Error('Report not found');
 
   // Find scenario in report
@@ -100,8 +105,10 @@ async function getScenarioTimeline(env, platform, version, scenarioName) {
 }
 
 // Get list of failed scenarios for a version (for picker)
-async function getFailedScenariosList(env, platform, version) {
-  const report = await Report.findOne({ env, platform, version });
+async function getFailedScenariosList(env, platform, version, opts = {}) {
+  const filter = { env, platform, $or: [{ version }, { businessVersion: version }] };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const report = await Report.findOne(filter).sort({ createdAt: -1 });
   if (!report) return [];
   const subs = flattenFailed(report).filter(s => s.overall === 'Failed');
   return subs.map(s => ({
@@ -113,8 +120,10 @@ async function getFailedScenariosList(env, platform, version) {
 }
 
 // ── 10. Error Message Similarity — cluster with Jaccard ──────────────────────
-async function errorSimilarity(env, platform, versionsLimit = 10) {
-  const reports = await Report.find({ env, platform })
+async function errorSimilarity(env, platform, opts = {}, versionsLimit = 10) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version createdAt scenarios')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -188,8 +197,10 @@ async function errorSimilarity(env, platform, versionsLimit = 10) {
 }
 
 // ── 11. Mean Time to Failure ─────────────────────────────────────────────────
-async function meanTimeToFailure(env, platform, versionsLimit = 20) {
-  const reports = await Report.find({ env, platform })
+async function meanTimeToFailure(env, platform, opts = {}, versionsLimit = 20) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -243,8 +254,10 @@ async function meanTimeToFailure(env, platform, versionsLimit = 20) {
 }
 
 // ── 12. Failure Co-occurrence Matrix ─────────────────────────────────────────
-async function coOccurrence(env, platform, versionsLimit = 15) {
-  const reports = await Report.find({ env, platform })
+async function coOccurrence(env, platform, opts = {}, versionsLimit = 15) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -314,12 +327,12 @@ async function coOccurrence(env, platform, versionsLimit = 15) {
 }
 
 // ── Main entry ───────────────────────────────────────────────────────────────
-async function failureIntelligence(env, platform, version) {
+async function failureIntelligence(env, platform, version, opts = {}) {
   const [similarity, mttf, cooc, failedList] = await Promise.all([
-    errorSimilarity(env, platform),
-    meanTimeToFailure(env, platform),
-    coOccurrence(env, platform),
-    version ? getFailedScenariosList(env, platform, version) : Promise.resolve([]),
+    errorSimilarity(env, platform, opts),
+    meanTimeToFailure(env, platform, opts),
+    coOccurrence(env, platform, opts),
+    version ? getFailedScenariosList(env, platform, version, opts) : Promise.resolve([]),
   ]);
   return { similarity, mttf, coOccurrence: cooc, failedList };
 }

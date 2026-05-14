@@ -59,12 +59,15 @@ router.post('/upload', (req, res, next) => {
 }, async (req, res) => {
   try {
     const { env, platform, version, label, notes } = req.body;
+    const businessVersion = String(req.body.businessVersion || '').trim();
     if (!env || !platform || !version)
-      return res.status(400).json({ error: 'env, platform, and version are required' });
+      return res.status(400).json({ error: 'env, platform, and version (consumer) are required' });
+    if (!businessVersion)
+      return res.status(400).json({ error: 'businessVersion is required' });
 
-    const existing = await Report.findOne({ env, platform, version });
-    if (existing)
-      return res.status(409).json({ error: `Report ${env}/${platform}/${version} already exists` });
+    // Single upload now carries BOTH version labels — one Report doc serves
+    // both Consumer (via `version`) and Business (via `businessVersion`) tracks
+    // on the user dashboard. Files/scenarios are shared.
 
     const rawFiles = req.files || [];
 
@@ -203,7 +206,7 @@ router.post('/upload', (req, res, next) => {
         const result = await uploadBuffer(file.buffer, {
           folder: `vya-reports/${env}/${platform}/${version}`,
           resourceType: isImage ? 'image' : 'raw',
-          publicId: file.originalname.replace(/\.[^.]+$/, ''),
+          publicId: file.originalname.replace(/\.[^.]+$/, '') + '-' + Date.now(),
         });
         fileRefs[idx] = {
           type: isImage ? 'screenshot' : file.originalname.match(/\.(xml|json)$/i) ? 'attachment' : 'raw_report',
@@ -279,7 +282,7 @@ router.post('/upload', (req, res, next) => {
       : null;
 
     const report = await Report.create({
-      env, platform, version,
+      env, platform, version, businessVersion,
       label: label || version,
       notes: notes || '',
       scenarios: scenarioRuns,
@@ -291,13 +294,13 @@ router.post('/upload', (req, res, next) => {
 
     await ActivityLog.create({
       action: 'upload', user: req.user._id, userName: req.user.name,
-      target: `${env}/${platform}/${version}`,
+      target: `${env}/${platform}/${version} ↔ ${businessVersion}`,
       details: { passRate, totalPassed, totalFailed, totalScenarios },
     });
 
     // Emit real-time update + check alerts
     const io = req.app.get('io');
-    if (io) io.emit('new-report', { id: report._id, env, platform, version, passRate, label: report.label });
+    if (io) io.emit('new-report', { id: report._id, env, platform, version, businessVersion, passRate, label: report.label });
     await checkAlerts(report, io);
 
     res.status(201).json({ report, parseWarnings });
@@ -326,7 +329,7 @@ router.put('/reports/:id', async (req, res) => {
 
     await ActivityLog.create({
       action: 'edit', user: req.user._id, userName: req.user.name,
-      target: `${report.env}/${report.platform}/${report.version}`,
+      target: `${report.env}/${report.platform}/${report.version}${report.businessVersion ? ' ↔ ' + report.businessVersion : ''}`,
     });
 
     res.json({ report });
@@ -348,11 +351,11 @@ router.delete('/reports/:id', async (req, res) => {
 
     await ActivityLog.create({
       action: 'delete', user: req.user._id, userName: req.user.name,
-      target: `${report.env}/${report.platform}/${report.version}`,
+      target: `${report.env}/${report.platform}/${report.version}${report.businessVersion ? ' ↔ ' + report.businessVersion : ''}`,
     });
 
     const io = req.app.get('io');
-    if (io) io.emit('report-deleted', { id: report._id, env: report.env, platform: report.platform, version: report.version });
+    if (io) io.emit('report-deleted', { id: report._id, env: report.env, platform: report.platform, version: report.version, businessVersion: report.businessVersion });
 
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

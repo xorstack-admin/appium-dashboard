@@ -5,6 +5,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 function flatten(report) {
   const map = new Map();
@@ -29,7 +30,9 @@ function flatten(report) {
 
 async function detectFlakyTests(env, platform, opts = {}) {
   const limit = opts.limit || 30; // last N versions
-  const reports = await Report.find({ env, platform })
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version createdAt scenarios')
     .sort({ createdAt: -1 })
     .limit(limit);

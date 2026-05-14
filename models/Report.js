@@ -50,7 +50,14 @@ const fileRefSchema = new mongoose.Schema({
 const reportSchema = new mongoose.Schema({
   env:       { type: String, enum: ['staging', 'production'], required: true },
   platform:  { type: String, enum: ['ios', 'android'], required: true },
-  version:   { type: String, required: true },
+  audience:  { type: String, enum: ['consumer', 'business'], required: true, default: 'consumer' },
+  // `version` is the CONSUMER-facing version label. Kept under this name for
+  // backward compatibility with existing services/routes that read `report.version`.
+  version:         { type: String, required: true },
+  // Admin enters a separate label for the BUSINESS-facing dashboard side.
+  // Optional in the schema so legacy docs without it still load — at read time
+  // we fall back to `version` when this isn't set.
+  businessVersion: { type: String },
   label:     { type: String },
   notes:     { type: String, default: '' },
   scenarios: [scenarioRunSchema],
@@ -64,6 +71,7 @@ const reportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 reportSchema.index({ env: 1, platform: 1, createdAt: -1 });
-reportSchema.index({ env: 1, platform: 1, version: 1 }, { unique: true });
+reportSchema.index({ env: 1, platform: 1, version: 1, createdAt: -1 });
+reportSchema.index({ env: 1, platform: 1, businessVersion: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Report', reportSchema);

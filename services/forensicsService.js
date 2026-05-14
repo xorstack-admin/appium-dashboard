@@ -9,6 +9,7 @@
 
 const crypto = require('crypto');
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
 function flatten(report) {
@@ -51,8 +52,10 @@ function fingerprint(scenarioName, stepNum, errorMsg) {
 }
 
 // ── 21. Failure Fingerprinting ───────────────────────────────────────────────
-async function failureFingerprints(env, platform, versionsLimit = 20) {
-  const reports = await Report.find({ env, platform })
+async function failureFingerprints(env, platform, opts = {}, versionsLimit = 20) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -111,8 +114,10 @@ async function failureFingerprints(env, platform, versionsLimit = 20) {
 }
 
 // ── 22. Time-to-Resolution Tracking ──────────────────────────────────────────
-async function timeToResolution(env, platform, versionsLimit = 30) {
-  const reports = await Report.find({ env, platform })
+async function timeToResolution(env, platform, opts = {}, versionsLimit = 30) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -200,8 +205,10 @@ async function timeToResolution(env, platform, versionsLimit = 30) {
 
 // ── 23. Drill-Down Step Analysis ─────────────────────────────────────────────
 // Get complete historical trace of a single scenario across all versions
-async function scenarioHistory(env, platform, scenarioName) {
-  const reports = await Report.find({ env, platform })
+async function scenarioHistory(env, platform, scenarioName, opts = {}) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(50);
@@ -293,10 +300,13 @@ function wordDiff(a, b) {
   return ops;
 }
 
-async function errorDiff(env, platform, v1, v2, scenarioName) {
+async function errorDiff(env, platform, v1, v2, scenarioName, opts = {}) {
+  const f1 = { env, platform, $or: [{ version: v1 }, { businessVersion: v1 }] };
+  const f2 = { env, platform, $or: [{ version: v2 }, { businessVersion: v2 }] };
+  if (opts.audience) { const m = audienceMatch(opts.audience); f1.audience = m; f2.audience = m; }
   const [r1, r2] = await Promise.all([
-    Report.findOne({ env, platform, version: v1 }),
-    Report.findOne({ env, platform, version: v2 }),
+    Report.findOne(f1).sort({ createdAt: -1 }),
+    Report.findOne(f2).sort({ createdAt: -1 }),
   ]);
   if (!r1 || !r2) throw new Error('Versions not found');
 
@@ -330,10 +340,10 @@ async function errorDiff(env, platform, v1, v2, scenarioName) {
 }
 
 // Main entry — load all forensics for a given version
-async function forensics(env, platform) {
+async function forensics(env, platform, opts = {}) {
   const [fps, ttr] = await Promise.all([
-    failureFingerprints(env, platform),
-    timeToResolution(env, platform),
+    failureFingerprints(env, platform, opts),
+    timeToResolution(env, platform, opts),
   ]);
   return { fingerprints: fps, timeToResolution: ttr };
 }

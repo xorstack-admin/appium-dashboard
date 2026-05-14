@@ -11,6 +11,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 // ── Pattern classification rules ─────────────────────────────────────────────
 const PATTERN_RULES = [
@@ -137,8 +138,10 @@ function signature(msg) {
 }
 
 // ── Main: Root-cause analysis for a single version ───────────────────────────
-async function analyzeVersion(env, platform, version) {
-  const report = await Report.findOne({ env, platform, version });
+async function analyzeVersion(env, platform, version, opts = {}) {
+  const filter = { env, platform, $or: [{ version }, { businessVersion: version }] };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const report = await Report.findOne(filter).sort({ createdAt: -1 });
   if (!report) throw new Error(`Report not found: ${version}`);
 
   const failedItems = [];
@@ -243,8 +246,10 @@ async function analyzeVersion(env, platform, version) {
 }
 
 // ── 4b. Blame Graph — which version first introduced each still-failing test ─
-async function buildBlameGraph(env, platform) {
-  const reports = await Report.find({ env, platform })
+async function buildBlameGraph(env, platform, opts = {}) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version createdAt scenarios')
     .sort({ createdAt: 1 }); // oldest → newest
 
@@ -301,10 +306,10 @@ async function buildBlameGraph(env, platform) {
   };
 }
 
-async function rootCauseAnalysis(env, platform, version) {
+async function rootCauseAnalysis(env, platform, version, opts = {}) {
   const [analysis, blame] = await Promise.all([
-    analyzeVersion(env, platform, version),
-    buildBlameGraph(env, platform),
+    analyzeVersion(env, platform, version, opts),
+    buildBlameGraph(env, platform, opts),
   ]);
   return { ...analysis, blame };
 }

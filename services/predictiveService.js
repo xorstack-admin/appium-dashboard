@@ -8,6 +8,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 // ── 1. Trend Forecasting — simple linear regression ─────────────────────────
 function linearRegression(points) {
@@ -187,8 +188,10 @@ function expectedVsActual(reports, currentVersion) {
 }
 
 // ── Main entry ───────────────────────────────────────────────────────────────
-async function predictiveAnalysis(env, platform, currentVersion) {
-  const reports = await Report.find({ env, platform })
+async function predictiveAnalysis(env, platform, currentVersion, opts = {}) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version passRate totalScenarios totalPassed totalFailed scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(30);

@@ -8,6 +8,7 @@
  */
 
 const Report = require('../models/Report');
+const { audienceMatch } = require('./audienceFilter');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function flatten(report) {
@@ -54,10 +55,13 @@ function autoTag(name, category) {
 }
 
 // ── 17. Auto-generate Bug Tickets for regressions ────────────────────────────
-async function generateBugTickets(env, platform, v1, v2) {
+async function generateBugTickets(env, platform, v1, v2, opts = {}) {
+  const f1 = { env, platform, $or: [{ version: v1 }, { businessVersion: v1 }] };
+  const f2 = { env, platform, $or: [{ version: v2 }, { businessVersion: v2 }] };
+  if (opts.audience) { const m = audienceMatch(opts.audience); f1.audience = m; f2.audience = m; }
   const [r1, r2] = await Promise.all([
-    Report.findOne({ env, platform, version: v1 }),
-    Report.findOne({ env, platform, version: v2 }),
+    Report.findOne(f1).sort({ createdAt: -1 }),
+    Report.findOne(f2).sort({ createdAt: -1 }),
   ]);
   if (!r1 || !r2) throw new Error('Versions not found');
 
@@ -190,10 +194,12 @@ function buildGithubMd(v1, v2, env, platform, items, severity) {
 }
 
 // ── 18. Owners / Tags summary — aggregate failures by team tag ──────────────
-async function ownerRouting(env, platform, version) {
+async function ownerRouting(env, platform, version, opts = {}) {
+  const baseFilter = { env, platform };
+  if (opts.audience) baseFilter.audience = audienceMatch(opts.audience);
   const report = version
-    ? await Report.findOne({ env, platform, version })
-    : await Report.findOne({ env, platform }).sort({ createdAt: -1 });
+    ? await Report.findOne({ ...baseFilter, $or: [{ version }, { businessVersion: version }] }).sort({ createdAt: -1 })
+    : await Report.findOne(baseFilter).sort({ createdAt: -1 });
   if (!report) return { byOwner: [], totalScenarios: 0, totalFailures: 0 };
 
   const scenarios = flatten(report);
@@ -231,8 +237,10 @@ async function ownerRouting(env, platform, version) {
 }
 
 // ── 19. Flaky Quarantine List ────────────────────────────────────────────────
-async function flakyQuarantine(env, platform, versionsLimit = 15) {
-  const reports = await Report.find({ env, platform })
+async function flakyQuarantine(env, platform, opts = {}, versionsLimit = 15) {
+  const filter = { env, platform };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
     .select('version scenarios createdAt')
     .sort({ createdAt: -1 })
     .limit(versionsLimit);
@@ -306,10 +314,16 @@ async function flakyQuarantine(env, platform, versionsLimit = 15) {
 }
 
 // ── 20. Historical Multi-Version Compare ─────────────────────────────────────
-async function multiVersionCompare(env, platform, versions) {
+async function multiVersionCompare(env, platform, versions, opts = {}) {
   if (!versions || versions.length < 2) throw new Error('Need at least 2 versions');
-  const reports = await Report.find({ env, platform, version: { $in: versions } })
-    .select('version passRate totalScenarios totalPassed totalFailed createdAt scenarios');
+  const filter = {
+    env, platform,
+    $or: [{ version: { $in: versions } }, { businessVersion: { $in: versions } }],
+  };
+  if (opts.audience) filter.audience = audienceMatch(opts.audience);
+  const reports = await Report.find(filter)
+    .select('version businessVersion passRate totalScenarios totalPassed totalFailed createdAt scenarios')
+    .sort({ createdAt: -1 });
 
   // Preserve requested order
   const byVer = new Map();

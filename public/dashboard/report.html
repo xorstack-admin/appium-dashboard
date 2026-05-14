@@ -481,8 +481,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span class="ctrl-label">Platform</span>
     <div class="ctrl-wrap"><select class="ctrl-select" id="pltSelect" onchange="switchEnvPlatform()" style="min-width:110px"><option value="ios">iOS</option><option value="android">Android</option></select></div>
     <div style="width:1px;height:22px;background:#334155;margin:0 2px"></div>
-    <span class="ctrl-label">Build</span>
-    <div class="ctrl-wrap"><select class="ctrl-select" id="versionSelect" onchange="loadVersion(this.value)" style="min-width:190px"><option>Loading...</option></select></div>
+    <div class="aud-track" id="trk-consumer" data-audience="consumer" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid #334155;border-radius:8px;background:rgba(99,102,241,.05);transition:.15s">
+      <span class="ctrl-label" style="color:#a5b4fc;font-weight:700">Consumer</span>
+      <div class="ctrl-wrap"><select class="ctrl-select" id="versionConsumer" onchange="onAudienceVersionChange('consumer')" style="min-width:170px"><option>Loading...</option></select></div>
+      <div class="ctrl-wrap" id="runConsumerWrap" style="display:none"><select class="ctrl-select" id="runConsumer" onchange="onAudienceRunChange('consumer')" style="min-width:170px"></select></div>
+      <button class="ctrl-btn" id="runConsumerAllBtn" onclick="openAllRunsModal('consumer')" style="display:none;font-size:11px;padding:5px 10px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:6px;cursor:pointer;white-space:nowrap" title="See every run under this version">All runs &#9656;</button>
+    </div>
+    <div class="aud-track" id="trk-business" data-audience="business" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid #334155;border-radius:8px;background:rgba(14,165,233,.05);transition:.15s">
+      <span class="ctrl-label" style="color:#7dd3fc;font-weight:700">Business</span>
+      <div class="ctrl-wrap"><select class="ctrl-select" id="versionBusiness" onchange="onAudienceVersionChange('business')" style="min-width:170px"><option>Loading...</option></select></div>
+      <div class="ctrl-wrap" id="runBusinessWrap" style="display:none"><select class="ctrl-select" id="runBusiness" onchange="onAudienceRunChange('business')" style="min-width:170px"></select></div>
+      <button class="ctrl-btn" id="runBusinessAllBtn" onclick="openAllRunsModal('business')" style="display:none;font-size:11px;padding:5px 10px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:6px;cursor:pointer;white-space:nowrap" title="See every run under this version">All runs &#9656;</button>
+    </div>
+    <!-- Hidden shim mirroring the active audience+version, kept for callers that still read versionSelect.value -->
+    <select id="versionSelect" style="display:none"></select>
     <div class="ctrl-meta" id="buildMeta"></div>
     <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:center">
       <button class="ctrl-btn primary" onclick="openCompareModal()" title="Compare Versions">&#8644; Compare Versions</button>
@@ -604,6 +616,9 @@ function goHome() {
 const params   = new URLSearchParams(location.search);
 let ENV      = params.get('env') || 'staging';
 let PLATFORM = params.get('platform') || 'ios';
+let ACTIVE_AUDIENCE = (params.get('audience') === 'business') ? 'business' : 'consumer';
+let ACTIVE_VERSION  = null;
+let ACTIVE_RUN_ID   = null;
 const BASE_API = `/api/dashboard`;
 
 // Scenario counts from DB (loaded dynamically)
@@ -619,7 +634,11 @@ pltChip.textContent = PLATFORM.toUpperCase();
 pltChip.className = 'env-chip ' + (PLATFORM === 'ios' ? 'chip-ios' : 'chip-and');
 
 let donutChart=null,catChart=null,trendChart=null;
-let allVersions=[],latestKnownVersion=null;
+// Per-audience version lists (each entry: {version, label, latestRunId, runs: [...], passRate, savedAt, runDate})
+let VERSIONS_BY_AUDIENCE = { consumer: [], business: [] };
+// allVersions is kept as an alias of the active audience's version list — many
+// downstream features (compare, daily, etc.) still read this name.
+let allVersions=[], latestKnownVersion=null;
 
 // ── API helper with auth ─────────────────────────────────────────────────────
 async function api(path) {
@@ -672,56 +691,193 @@ async function init(){
       if (scenData.totalActive) TOTAL_SCENARIOS = scenData.totalActive;
     } catch(e) {}
 
-    const vRes=await api(`/${ENV}/${PLATFORM}/versions`);
-    allVersions=vRes.versions||[];
-    populateSelect(allVersions);
+    // Each Report doc carries two labels (consumer's `version` and `businessVersion`).
+    // The two tracks fetch the SAME docs, just labeled differently by the backend.
+    const [vC, vB] = await Promise.all([
+      api(`/${ENV}/${PLATFORM}/versions?audience=consumer`).catch(()=>({versions:[]})),
+      api(`/${ENV}/${PLATFORM}/versions?audience=business`).catch(()=>({versions:[]})),
+    ]);
+    VERSIONS_BY_AUDIENCE.consumer = vC.versions || [];
+    VERSIONS_BY_AUDIENCE.business = vB.versions || [];
+    populateAudienceTrack('consumer');
+    populateAudienceTrack('business');
     syncSelectors();
+
+    applyActiveAudienceUI();
+
+    allVersions = VERSIONS_BY_AUDIENCE[ACTIVE_AUDIENCE];
+    if (!allVersions.length) { showEmpty(); return; }
+
+    latestKnownVersion = allVersions[0].version;
+
+    // Resolve which run to load: prefer ?runId=, then ?version=, else latest of active audience
+    const urlParams = new URLSearchParams(location.search);
+    const wantRunId = urlParams.get('runId');
+    const wantVersion = urlParams.get('version');
+    let entry = null;
+    if (wantRunId) {
+      entry = findVersionByRunId(ACTIVE_AUDIENCE, wantRunId);
+    }
+    if (!entry && wantVersion) {
+      entry = allVersions.find(v => v.version === wantVersion);
+    }
+    if (!entry) entry = allVersions[0];
+
+    // Sync the version selector to the chosen version
+    document.getElementById('version' + cap(ACTIVE_AUDIENCE)).value = entry.version;
+    rebuildRunDropdown(ACTIVE_AUDIENCE, entry.version);
+    const targetRunId = (wantRunId && entry.runs.some(r => String(r.runId) === wantRunId))
+      ? wantRunId
+      : entry.latestRunId;
+    document.getElementById('run' + cap(ACTIVE_AUDIENCE)).value = targetRunId;
+
+    ACTIVE_VERSION = entry.version;
+    ACTIVE_RUN_ID = targetRunId;
+    syncVersionShim();
+
+    await loadRun(targetRunId);
+    loadAnalytics();
+    populateCompareDropdowns();
+    loadFlaky();
+
+    // Auto-open comparison modal from shared link
+    const cV1 = urlParams.get('compareV1'), cV2 = urlParams.get('compareV2');
+    if (cV1 && cV2) {
+      openCompareModal();
+      document.getElementById('cmpV1').value = cV1;
+      document.getElementById('cmpV2').value = cV2;
+      setTimeout(runCompare, 200);
+    }
+    document.getElementById('tc-daily').textContent=new Set(allVersions.map(v=>v.runDate)).size||'0';
     if(allVersions.length){
-      latestKnownVersion=allVersions[0].version;
-      await loadVersion(allVersions[0].version);
-      loadAnalytics();
-      populateCompareDropdowns();
-      loadFlaky();
-      // Auto-open comparison modal from shared link
-      const urlParams = new URLSearchParams(location.search);
-      const cV1 = urlParams.get('compareV1'), cV2 = urlParams.get('compareV2');
-      if (cV1 && cV2) {
-        openCompareModal();
-        document.getElementById('cmpV1').value = cV1;
-        document.getElementById('cmpV2').value = cV2;
-        setTimeout(runCompare, 200);
-      }
-      document.getElementById('tc-daily').textContent=new Set(allVersions.map(v=>v.runDate)).size||'0';
-      if(allVersions.length){
-        const dates=allVersions.map(v=> typeof v.runDate === 'string' ? v.runDate.slice(0,10) : new Date(v.runDate).toISOString().slice(0,10)).sort();
-        document.getElementById('dateFrom').value=dates[0];
-        document.getElementById('dateTo').value=dates[dates.length-1];
-      }
-    } else showEmpty();
+      const dates=allVersions.map(v=> typeof v.runDate === 'string' ? v.runDate.slice(0,10) : new Date(v.runDate).toISOString().slice(0,10)).sort();
+      document.getElementById('dateFrom').value=dates[0];
+      document.getElementById('dateTo').value=dates[dates.length-1];
+    }
   }catch(e){showError(e.message)}
 }
 
-function populateSelect(versions){
-  const sel=document.getElementById('versionSelect');
-  sel.innerHTML='';
-  versions.forEach((v,i)=>{
-    sel.add(new Option(`${v.label}${i===0?' (latest)':''}`,v.version));
+function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// Mirror ACTIVE_VERSION onto the hidden versionSelect shim so legacy callers
+// (compare/analytics/exports/etc. that read versionSelect.value) still work.
+function syncVersionShim(){
+  const sel = document.getElementById('versionSelect');
+  if (!sel) return;
+  sel.innerHTML = '';
+  if (ACTIVE_VERSION) sel.add(new Option(ACTIVE_VERSION, ACTIVE_VERSION));
+}
+
+function findVersionByRunId(audience, runId){
+  for (const v of (VERSIONS_BY_AUDIENCE[audience] || [])) {
+    if ((v.runs || []).some(r => String(r.runId) === String(runId))) return v;
+  }
+  return null;
+}
+
+function populateAudienceTrack(audience){
+  const sel = document.getElementById('version' + cap(audience));
+  const versions = VERSIONS_BY_AUDIENCE[audience] || [];
+  sel.innerHTML = '';
+  if (!versions.length){
+    sel.add(new Option('(no reports)', ''));
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  versions.forEach((v, i) => {
+    const runsTag = v.totalRuns > 1 ? ` · ${v.totalRuns} runs` : '';
+    sel.add(new Option(`${v.label || v.version}${i === 0 ? ' (latest)' : ''}${runsTag}`, v.version));
   });
 }
 
-async function loadVersion(version){
-  if(!version)return;
+function rebuildRunDropdown(audience, version){
+  const entry = (VERSIONS_BY_AUDIENCE[audience] || []).find(v => v.version === version);
+  const wrap = document.getElementById('run' + cap(audience) + 'Wrap');
+  const sel = document.getElementById('run' + cap(audience));
+  const allBtn = document.getElementById('run' + cap(audience) + 'AllBtn');
+  sel.innerHTML = '';
+  const runCount = entry && entry.runs ? entry.runs.length : 0;
+  if (!entry || runCount <= 1) {
+    wrap.style.display = 'none';
+    if (allBtn) allBtn.style.display = 'none';
+    if (entry && entry.runs && entry.runs[0]) sel.add(new Option(entry.label || version, entry.runs[0].runId));
+    return;
+  }
+  wrap.style.display = '';
+  // Show the "All runs" button only for 3+ runs — for 2 runs the dropdown is enough.
+  if (allBtn) {
+    if (runCount >= 3) { allBtn.style.display = ''; allBtn.textContent = `All runs (${runCount}) ▸`; }
+    else { allBtn.style.display = 'none'; }
+  }
+  entry.runs.forEach((r, i) => {
+    const when = r.savedAt ? new Date(r.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    const label = `Run ${entry.runs.length - i}${i === 0 ? ' (latest)' : ''} · ${when}`;
+    sel.add(new Option(label, r.runId));
+  });
+}
+
+async function onAudienceVersionChange(audience){
+  const version = document.getElementById('version' + cap(audience)).value;
+  if (!version) return;
+  rebuildRunDropdown(audience, version);
+  const entry = (VERSIONS_BY_AUDIENCE[audience] || []).find(v => v.version === version);
+  if (!entry) return;
+  const runId = entry.latestRunId;
+  await activateRun(audience, version, runId);
+}
+
+async function onAudienceRunChange(audience){
+  const runId = document.getElementById('run' + cap(audience)).value;
+  const version = document.getElementById('version' + cap(audience)).value;
+  if (!runId || !version) return;
+  await activateRun(audience, version, runId);
+}
+
+async function activateRun(audience, version, runId){
+  ACTIVE_AUDIENCE = audience;
+  ACTIVE_VERSION = version;
+  ACTIVE_RUN_ID = runId;
+  allVersions = VERSIONS_BY_AUDIENCE[audience] || [];
+  latestKnownVersion = allVersions[0] ? allVersions[0].version : null;
+  syncVersionShim();
+  applyActiveAudienceUI();
+  // Clear the inactive side's selection visual (keep their own version highlighted, just dim the track)
+  const url = new URL(location.href);
+  url.searchParams.set('audience', audience);
+  url.searchParams.set('version', version);
+  url.searchParams.set('runId', runId);
+  history.replaceState(null, '', url.toString());
+  await loadRun(runId);
+  loadAnalytics();
+  populateCompareDropdowns();
+  loadFlaky();
+}
+
+function applyActiveAudienceUI(){
+  // Both tracks render identically — no active/dim styling. The active audience
+  // is still tracked internally (drives downstream queries) but isn't surfaced
+  // as a visual highlight on the controls.
+  const trkC = document.getElementById('trk-consumer');
+  const trkB = document.getElementById('trk-business');
+  const neutralBorder = '#334155';
+  if (trkC) { trkC.style.borderColor = neutralBorder; trkC.style.opacity = '1'; }
+  if (trkB) { trkB.style.borderColor = neutralBorder; trkB.style.opacity = '1'; }
+  const pltChip = document.getElementById('pltChip');
+  if (pltChip) pltChip.textContent = PLATFORM.toUpperCase();
+}
+
+async function loadRun(runId){
+  if(!runId)return;
   document.getElementById('categoryBlocks').innerHTML='<div class="state-screen"><div class="spinner"></div><h2>Loading...</h2></div>';
   document.getElementById('overallBadge').className='overall-badge badge-loading';
   document.getElementById('overallBadge').textContent='Loading...';
   try{
-    const d=await api(`/${ENV}/${PLATFORM}/report/`+encodeURIComponent(version));
-    renderBuild(d, version);
-    // Attachments hidden from user dashboard (admin-only view)
+    const d = await api(`/run/${encodeURIComponent(runId)}`);
+    renderBuild(d, d.meta?.version || ACTIVE_VERSION);
     const attachEl = document.getElementById('attachments');
     if (attachEl) attachEl.style.display = 'none';
-    loadAnalytics(version); // refresh insights for the selected version
-    // Root Cause + Visualizations load on-demand when their modals open
+    loadAnalytics(d.meta?.version || ACTIVE_VERSION);
   }catch(e){showError(e.message)}
 }
 
@@ -1102,8 +1258,16 @@ function exportDownload(url) {
     });
 }
 
-function exportXLSX(){const v=document.getElementById('versionSelect').value;if(v)exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(v)}/xlsx`)}
-function exportCSV(){const v=document.getElementById('versionSelect').value;if(v)exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(v)}/csv`)}
+function exportXLSX(){
+  if (!ACTIVE_VERSION) return;
+  const q = ACTIVE_RUN_ID ? `?runId=${encodeURIComponent(ACTIVE_RUN_ID)}` : '';
+  exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(ACTIVE_VERSION)}/xlsx${q}`);
+}
+function exportCSV(){
+  if (!ACTIVE_VERSION) return;
+  const q = ACTIVE_RUN_ID ? `?runId=${encodeURIComponent(ACTIVE_RUN_ID)}` : '';
+  exportDownload(`/api/export/${ENV}/${PLATFORM}/${encodeURIComponent(ACTIVE_VERSION)}/csv${q}`);
+}
 function exportRangeXLSX(){
   const from=document.getElementById('dateFrom').value,to=document.getElementById('dateTo').value;
   let url=`/api/export/${ENV}/${PLATFORM}/range/xlsx`;const p=[];if(from)p.push('from='+from);if(to)p.push('to='+to);
@@ -3080,7 +3244,8 @@ async function loadAnalytics(version) {
 try {
   const socket = io();
   socket.on('new-report', data => {
-    if (data.env === ENV && data.platform === PLATFORM) {
+    const sameAud = !data.audience || data.audience === ACTIVE_AUDIENCE;
+    if (data.env === ENV && data.platform === PLATFORM && sameAud) {
       document.getElementById('newBanner').style.display = 'flex';
       latestKnownVersion = data.version;
     }
@@ -3450,6 +3615,83 @@ document.addEventListener('click', e => {
   const wrap = document.querySelector('.analytics-menu-wrap');
   if (wrap && !wrap.contains(e.target)) closeAnalyticsMenu();
 });
+
+// ── All Runs Modal ────────────────────────────────────────────────────────────
+function openAllRunsModal(audience){
+  const versionSel = document.getElementById('version' + cap(audience));
+  const version = versionSel ? versionSel.value : null;
+  if (!version) return;
+  const entry = (VERSIONS_BY_AUDIENCE[audience] || []).find(v => v.version === version);
+  if (!entry || !entry.runs || entry.runs.length === 0) return;
+
+  const modal = document.getElementById('allRunsModal');
+  const title = document.getElementById('allRunsTitle');
+  const body = document.getElementById('allRunsBody');
+  title.textContent = `Runs · ${cap(audience)} · ${version} (${entry.runs.length})`;
+
+  // Newest first (matches dropdown). Number runs so latest = highest.
+  const total = entry.runs.length;
+  body.innerHTML = entry.runs.map((r, i) => {
+    const runNum = total - i;
+    const isActive = String(r.runId) === String(ACTIVE_RUN_ID);
+    const passRate = r.passRate != null ? r.passRate + '%' : '--';
+    const rateColor = r.passRate == null ? '#94a3b8' : r.passRate >= 90 ? '#10b981' : r.passRate >= 70 ? '#f59e0b' : '#ef4444';
+    const when = r.savedAt ? new Date(r.savedAt).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+    const runDate = r.runDate ? new Date(r.runDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '';
+    const labelLine = (r.label && r.label !== version) ? `<div style="font-size:11px;color:#cbd5e1;margin-top:4px"><strong style="color:#94a3b8">Label:</strong> ${esc(r.label)}</div>` : '';
+    const notesLine = r.notes ? `<div style="font-size:11px;color:#a5b4fc;margin-top:4px;font-style:italic"><strong style="color:#94a3b8;font-style:normal">Notes:</strong> ${esc(r.notes)}</div>` : '';
+    return `<div class="run-card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:#0f172a;border:1px solid ${isActive ? '#6366f1' : '#1e293b'};border-radius:10px;margin-bottom:10px">
+      <div style="flex-shrink:0;width:56px;height:56px;border-radius:10px;background:${rateColor};color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800">
+        <div style="font-size:14px;line-height:1">${passRate}</div>
+        <div style="font-size:9px;opacity:.85;margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Pass</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:#f1f5f9">Run ${runNum}${i === 0 ? ' (latest)' : ''}${isActive ? ' · <span style="color:#a5b4fc">currently viewing</span>' : ''}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px">Uploaded ${when}${runDate ? ' · Run date ' + runDate : ''}</div>
+        <div style="font-size:11px;color:#cbd5e1;margin-top:4px"><span style="color:#10b981;font-weight:600">${r.passed || 0} passed</span> · <span style="color:${(r.failed||0)>0?'#ef4444':'#94a3b8'};font-weight:600">${r.failed || 0} failed</span> · ${r.totalScenarios || 0} total</div>
+        ${labelLine}
+        ${notesLine}
+      </div>
+      <button class="ctrl-btn" onclick="selectRunFromModal('${audience}','${esc(version)}','${r.runId}')" style="padding:8px 16px;background:${isActive ? '#475569' : '#6366f1'};border:none;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0" ${isActive ? 'disabled' : ''}>${isActive ? 'Active' : 'View'}</button>
+    </div>`;
+  }).join('');
+
+  modal.style.display = 'flex';
+}
+
+function closeAllRunsModal(){
+  const m = document.getElementById('allRunsModal');
+  if (m) m.style.display = 'none';
+}
+
+async function selectRunFromModal(audience, version, runId){
+  closeAllRunsModal();
+  // Sync the version+run dropdowns to the selection so the UI matches.
+  const verSel = document.getElementById('version' + cap(audience));
+  const runSel = document.getElementById('run' + cap(audience));
+  if (verSel) verSel.value = version;
+  if (runSel) runSel.value = runId;
+  await activateRun(audience, version, runId);
+}
 </script>
+
+<!-- All Runs Modal -->
+<style>
+  .all-runs-modal { position:fixed; inset:0; background:rgba(2,6,23,.7); z-index:1000; display:none; align-items:flex-start; justify-content:center; padding:60px 16px; overflow-y:auto; }
+  .all-runs-modal-content { background:#0b1220; border:1px solid #1e293b; border-radius:14px; width:100%; max-width:760px; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  .all-runs-modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #1e293b; }
+  .all-runs-modal-header h3 { margin:0; font-size:15px; color:#f1f5f9; font-weight:800; letter-spacing:-.2px; }
+  .all-runs-modal-header button { background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:22px; line-height:1; padding:4px 8px; }
+  .all-runs-modal-body { padding:14px 16px; overflow-y:auto; }
+</style>
+<div class="all-runs-modal" id="allRunsModal" onclick="if(event.target===this)closeAllRunsModal()">
+  <div class="all-runs-modal-content">
+    <div class="all-runs-modal-header">
+      <h3 id="allRunsTitle">Runs</h3>
+      <button onclick="closeAllRunsModal()" title="Close">&times;</button>
+    </div>
+    <div class="all-runs-modal-body" id="allRunsBody"></div>
+  </div>
+</div>
 </body>
 </html>
