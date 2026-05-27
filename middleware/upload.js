@@ -1,6 +1,22 @@
 const multer = require('multer');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
-const storage = multer.memoryStorage();
+// Disk storage keeps large uploads (zips of screenshots) off the JS heap, so a
+// 270MB+ zip doesn't blow past a 512MB instance memory limit.
+const tmpDir = path.join(os.tmpdir(), 'vya-uploads');
+try { fs.mkdirSync(tmpDir, { recursive: true }); } catch (_) {}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, tmpDir),
+  filename: (req, file, cb) => {
+    const rand = crypto.randomBytes(8).toString('hex');
+    const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
+    cb(null, `${Date.now()}-${rand}-${safe}`);
+  },
+});
 
 const upload = multer({
   storage,

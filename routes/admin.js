@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const fsp = require('fs').promises;
 const { auth, adminOnly } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { uploadErrorHandler } = require('../middleware/upload');
@@ -57,6 +59,7 @@ router.post('/upload', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
+  const tmpFilesToCleanup = [];
   try {
     const { env, platform, version, label, notes } = req.body;
     const businessVersion = String(req.body.businessVersion || '').trim();
@@ -70,74 +73,84 @@ router.post('/upload', (req, res, next) => {
     // on the user dashboard. Files/scenarios are shared.
 
     const rawFiles = req.files || [];
+    for (const f of rawFiles) { if (f.path) tmpFilesToCleanup.push(f.path); }
 
-    // Extract zip files into individual files
-    const files = [];
+    // Build a list of "sources" — lightweight metadata only, no buffers.
+    // Each source loads its bytes on demand via getBuffer(), so we never hold
+    // every extracted zip entry in memory at once (key fix for OOM on 512MB instances).
+    const sources = []; // { originalname, size, getBuffer: () => Promise<Buffer> }
+
     for (const file of rawFiles) {
       if (file.originalname.toLowerCase().endsWith('.zip')) {
+        let zip;
         try {
-          const zip = new AdmZip(file.buffer);
-          const entries = zip.getEntries();
-          for (const entry of entries) {
-            if (entry.isDirectory) continue;
-            const name = entry.entryName.split('/').pop(); // get filename only
-            if (!name || name.startsWith('.')) continue; // skip hidden files
-            files.push({
-              originalname: name,
-              buffer: entry.getData(),
-              size: entry.header.size,
-              mimetype: 'application/octet-stream',
-            });
-          }
+          zip = new AdmZip(file.path); // reads from disk, not heap
         } catch (zipErr) {
-          return res.status(400).json({ error: `Failed to extract zip "${file.originalname}": ${zipErr.message}` });
+          return res.status(400).json({ error: `Failed to open zip "${file.originalname}": ${zipErr.message}` });
+        }
+        for (const entry of zip.getEntries()) {
+          if (entry.isDirectory) continue;
+          const name = entry.entryName.split('/').pop();
+          if (!name || name.startsWith('.')) continue;
+          sources.push({
+            originalname: name,
+            size: entry.header.size,
+            getBuffer: async () => entry.getData(),
+          });
         }
       } else {
-        files.push(file);
+        sources.push({
+          originalname: file.originalname,
+          size: file.size,
+          getBuffer: () => fsp.readFile(file.path),
+        });
       }
     }
 
-    const htmlFiles = files.filter(f => /\.(html|htm)$/i.test(f.originalname));
-    const xmlFiles = files.filter(f => /\.xml$/i.test(f.originalname));
-    const jsonFiles = files.filter(f => /\.json$/i.test(f.originalname));
+    const htmlSources = sources.filter(s => /\.(html|htm)$/i.test(s.originalname));
+    const xmlSources  = sources.filter(s => /\.xml$/i.test(s.originalname));
+    const jsonSources = sources.filter(s => /\.json$/i.test(s.originalname));
 
     // Parse HTML reports
     const scenarioRuns = [];
     const parseWarnings = []; // [{ file, reason }]
-    for (const file of htmlFiles) {
+    for (const src of htmlSources) {
       try {
-        const content = file.buffer.toString('utf-8');
-        const parsed = parseHTML(content, file.originalname);
+        const buf = await src.getBuffer();
+        const content = buf.toString('utf-8');
+        const parsed = parseHTML(content, src.originalname);
         scenarioRuns.push(parsed);
         if (!parsed.subScenarios || parsed.subScenarios.length === 0) {
-          parseWarnings.push({ file: file.originalname, reason: 'No scenarios extracted — unrecognized HTML format' });
+          parseWarnings.push({ file: src.originalname, reason: 'No scenarios extracted — unrecognized HTML format' });
         }
       } catch (parseErr) {
-        console.error(`Warning: failed to parse ${file.originalname}:`, parseErr.message);
-        parseWarnings.push({ file: file.originalname, reason: `Parse error: ${parseErr.message}` });
+        console.error(`Warning: failed to parse ${src.originalname}:`, parseErr.message);
+        parseWarnings.push({ file: src.originalname, reason: `Parse error: ${parseErr.message}` });
       }
     }
 
     // Parse XML files (Appium test definitions — extracts scenario names only)
-    for (const file of xmlFiles) {
+    for (const src of xmlSources) {
       try {
-        const content = file.buffer.toString('utf-8');
-        const parsed = parseXML(content, file.originalname);
+        const buf = await src.getBuffer();
+        const content = buf.toString('utf-8');
+        const parsed = parseXML(content, src.originalname);
         if (parsed.subScenarios && parsed.subScenarios.length > 0) {
           scenarioRuns.push(parsed);
         } else {
-          parseWarnings.push({ file: file.originalname, reason: 'No scenarios extracted from XML' });
+          parseWarnings.push({ file: src.originalname, reason: 'No scenarios extracted from XML' });
         }
       } catch (xmlErr) {
-        console.error(`Warning: failed to parse ${file.originalname}:`, xmlErr.message);
-        parseWarnings.push({ file: file.originalname, reason: `XML parse error: ${xmlErr.message}` });
+        console.error(`Warning: failed to parse ${src.originalname}:`, xmlErr.message);
+        parseWarnings.push({ file: src.originalname, reason: `XML parse error: ${xmlErr.message}` });
       }
     }
 
     // Parse JSON reports — handles multiple formats
-    for (const file of jsonFiles) {
+    for (const src of jsonSources) {
       try {
-        const raw = JSON.parse(file.buffer.toString('utf-8'));
+        const buf = await src.getBuffer();
+        const raw = JSON.parse(buf.toString('utf-8'));
         const arr = Array.isArray(raw) ? raw : [raw];
         for (const item of arr) {
           // Format 1: already-parsed scenario run (has subScenarios)
@@ -159,7 +172,7 @@ router.post('/upload', (req, res, next) => {
               failed: [], slow: [],
             }));
             scenarioRuns.push({
-              scenario: item.name || file.originalname.replace(/\.json$/i, ''),
+              scenario: item.name || src.originalname.replace(/\.json$/i, ''),
               device: item.device || '', runStarted: item.runStarted || '', totalTime: item.totalTime || '',
               overall: subs.some(s => s.overall === 'Failed') ? 'Failed' : 'Passed',
               totalSteps: subs.length,
@@ -174,7 +187,7 @@ router.post('/upload', (req, res, next) => {
           if (item.name && (item.status || item.overall)) {
             const isFailed = (item.status || item.overall || '').toLowerCase() === 'failed';
             scenarioRuns.push({
-              scenario: file.originalname.replace(/\.json$/i, ''),
+              scenario: src.originalname.replace(/\.json$/i, ''),
               device: '', runStarted: '', totalTime: '',
               overall: isFailed ? 'Failed' : 'Passed',
               totalSteps: 1, passedSteps: isFailed ? 0 : 1, failedSteps: isFailed ? 1 : 0, slowSteps: 0,
@@ -190,47 +203,48 @@ router.post('/upload', (req, res, next) => {
           }
         }
       } catch (jsonErr) {
-        console.error(`Warning: failed to parse ${file.originalname}:`, jsonErr.message);
-        parseWarnings.push({ file: file.originalname, reason: `JSON parse error: ${jsonErr.message}` });
+        console.error(`Warning: failed to parse ${src.originalname}:`, jsonErr.message);
+        parseWarnings.push({ file: src.originalname, reason: `JSON parse error: ${jsonErr.message}` });
       }
     }
 
-    // Upload files to Cloudinary IN PARALLEL — batch of 10 concurrent uploads
-    // This is ~10x faster than sequential for zips with many screenshots
-    const CONCURRENCY = 10;
-    const fileRefs = new Array(files.length);
+    // Upload sources to Cloudinary with low concurrency so peak memory stays bounded.
+    // Each task: load the buffer on demand, upload, then let GC reclaim it before the
+    // next task in the same slot starts. On a 512MB instance this keeps peak heap small.
+    const CONCURRENCY = 3;
+    const fileRefs = new Array(sources.length);
 
-    async function uploadOne(file, idx) {
-      const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(file.originalname);
+    async function uploadOne(src, idx) {
+      const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(src.originalname);
       try {
-        const result = await uploadBuffer(file.buffer, {
+        const buf = await src.getBuffer();
+        const result = await uploadBuffer(buf, {
           folder: `vya-reports/${env}/${platform}/${version}`,
           resourceType: isImage ? 'image' : 'raw',
-          publicId: file.originalname.replace(/\.[^.]+$/, '') + '-' + Date.now(),
+          publicId: src.originalname.replace(/\.[^.]+$/, '') + '-' + Date.now(),
         });
         fileRefs[idx] = {
-          type: isImage ? 'screenshot' : file.originalname.match(/\.(xml|json)$/i) ? 'attachment' : 'raw_report',
+          type: isImage ? 'screenshot' : src.originalname.match(/\.(xml|json)$/i) ? 'attachment' : 'raw_report',
           url: result.url,
           publicId: result.publicId,
-          originalName: file.originalname,
+          originalName: src.originalname,
           size: result.size,
         };
       } catch (uploadErr) {
-        console.error(`Warning: failed to upload ${file.originalname}:`, uploadErr.message);
+        console.error(`Warning: failed to upload ${src.originalname}:`, uploadErr.message);
         fileRefs[idx] = {
           type: isImage ? 'screenshot' : 'raw_report',
           url: null,
           publicId: null,
-          originalName: file.originalname,
-          size: file.size || file.buffer?.length || 0,
+          originalName: src.originalname,
+          size: src.size || 0,
         };
       }
     }
 
-    // Process in batches of CONCURRENCY
-    for (let i = 0; i < files.length; i += CONCURRENCY) {
-      const batch = files.slice(i, i + CONCURRENCY);
-      await Promise.all(batch.map((f, bIdx) => uploadOne(f, i + bIdx)));
+    for (let i = 0; i < sources.length; i += CONCURRENCY) {
+      const batch = sources.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map((s, bIdx) => uploadOne(s, i + bIdx)));
     }
 
     // Build a map of uploaded screenshot filename → Cloudinary URL
@@ -306,6 +320,12 @@ router.post('/upload', (req, res, next) => {
     res.status(201).json({ report, parseWarnings });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  } finally {
+    // Clean up temp upload files written by multer disk storage. Best-effort —
+    // ignore failures (file already gone, container restarted, etc.).
+    for (const p of tmpFilesToCleanup) {
+      fsp.unlink(p).catch(() => {});
+    }
   }
 });
 
