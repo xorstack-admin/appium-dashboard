@@ -11,9 +11,54 @@ const ActivityLog = require('../models/ActivityLog');
 const Setting = require('../models/Setting');
 const Alert = require('../models/Alert');
 const { parseHTML, parseXML } = require('../services/parser');
-const AdmZip = require('adm-zip');
-const { uploadBuffer, deleteFile } = require('../services/cloudinaryService');
+const yauzl = require('yauzl');
+const { uploadBuffer, uploadStream, deleteFile } = require('../services/cloudinaryService');
 const { checkAlerts } = require('../services/alertService');
+
+// ── yauzl helpers ────────────────────────────────────────────────────────────
+// Streaming zip access: yauzl reads the central directory once (~tiny) and lets
+// us pull each entry's bytes on demand. We never hold the whole zip in heap,
+// which is critical on 512MB Render instances.
+function openZip(filePath) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(filePath, { lazyEntries: true, autoClose: false }, (err, zipfile) => {
+      if (err) return reject(err);
+      resolve(zipfile);
+    });
+  });
+}
+
+function listZipEntries(zipfile) {
+  return new Promise((resolve, reject) => {
+    const entries = [];
+    zipfile.on('entry', (entry) => {
+      entries.push(entry);
+      zipfile.readEntry();
+    });
+    zipfile.on('end', () => resolve(entries));
+    zipfile.on('error', reject);
+    zipfile.readEntry();
+  });
+}
+
+function openEntryStream(zipfile, entry) {
+  return new Promise((resolve, reject) => {
+    zipfile.openReadStream(entry, (err, readStream) => {
+      if (err) reject(err);
+      else resolve(readStream);
+    });
+  });
+}
+
+async function entryToBuffer(zipfile, entry) {
+  const readStream = await openEntryStream(zipfile, entry);
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readStream.on('data', (c) => chunks.push(c));
+    readStream.on('end', () => resolve(Buffer.concat(chunks)));
+    readStream.on('error', reject);
+  });
+}
 
 const router = express.Router();
 
@@ -59,7 +104,14 @@ router.post('/upload', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
+  // Disable Node's request/response timeouts — large zips can take minutes to
+  // process. (Render's HTTP proxy still has its own timeout, but at least we
+  // don't add our own on top.)
+  if (req.setTimeout) req.setTimeout(0);
+  if (res.setTimeout) res.setTimeout(0);
+
   const tmpFilesToCleanup = [];
+  const zipfilesToClose = [];
   try {
     const { env, platform, version, label, notes } = req.body;
     const businessVersion = String(req.body.businessVersion || '').trim();
@@ -75,33 +127,46 @@ router.post('/upload', (req, res, next) => {
     const rawFiles = req.files || [];
     for (const f of rawFiles) { if (f.path) tmpFilesToCleanup.push(f.path); }
 
-    // Build a list of "sources" — lightweight metadata only, no buffers.
-    // Each source loads its bytes on demand via getBuffer(), so we never hold
-    // every extracted zip entry in memory at once (key fix for OOM on 512MB instances).
-    const sources = []; // { originalname, size, getBuffer: () => Promise<Buffer> }
+    // Build a list of "sources" — lightweight metadata only. Each source knows
+    // how to stream its bytes from disk on demand (yauzl entry stream for zip
+    // contents, or fs.createReadStream for direct uploads). We never load the
+    // full zip into memory.
+    const sources = [];
+    // source: { originalname, size, getStream(): Readable, getBuffer(): Buffer }
 
     for (const file of rawFiles) {
       if (file.originalname.toLowerCase().endsWith('.zip')) {
-        let zip;
+        let zipfile;
         try {
-          zip = new AdmZip(file.path); // reads from disk, not heap
+          zipfile = await openZip(file.path);
         } catch (zipErr) {
           return res.status(400).json({ error: `Failed to open zip "${file.originalname}": ${zipErr.message}` });
         }
-        for (const entry of zip.getEntries()) {
-          if (entry.isDirectory) continue;
-          const name = entry.entryName.split('/').pop();
+        zipfilesToClose.push(zipfile);
+
+        let entries;
+        try {
+          entries = await listZipEntries(zipfile);
+        } catch (zipErr) {
+          return res.status(400).json({ error: `Failed to read zip entries in "${file.originalname}": ${zipErr.message}` });
+        }
+
+        for (const entry of entries) {
+          if (/\/$/.test(entry.fileName)) continue; // directory entry
+          const name = entry.fileName.split('/').pop();
           if (!name || name.startsWith('.')) continue;
           sources.push({
             originalname: name,
-            size: entry.header.size,
-            getBuffer: async () => entry.getData(),
+            size: entry.uncompressedSize,
+            getStream: () => openEntryStream(zipfile, entry),
+            getBuffer: () => entryToBuffer(zipfile, entry),
           });
         }
       } else {
         sources.push({
           originalname: file.originalname,
           size: file.size,
+          getStream: async () => fs.createReadStream(file.path),
           getBuffer: () => fsp.readFile(file.path),
         });
       }
@@ -111,7 +176,9 @@ router.post('/upload', (req, res, next) => {
     const xmlSources  = sources.filter(s => /\.xml$/i.test(s.originalname));
     const jsonSources = sources.filter(s => /\.json$/i.test(s.originalname));
 
-    // Parse HTML reports
+    // Parse HTML reports — these need to be materialized as strings to parse,
+    // but they're typically small (a few MB at most), and there are usually
+    // only a handful.
     const scenarioRuns = [];
     const parseWarnings = []; // [{ file, reason }]
     for (const src of htmlSources) {
@@ -208,17 +275,18 @@ router.post('/upload', (req, res, next) => {
       }
     }
 
-    // Upload sources to Cloudinary with low concurrency so peak memory stays bounded.
-    // Each task: load the buffer on demand, upload, then let GC reclaim it before the
-    // next task in the same slot starts. On a 512MB instance this keeps peak heap small.
-    const CONCURRENCY = 3;
+    // Upload sources to Cloudinary by streaming each entry directly from disk
+    // (via yauzl) into Cloudinary's upload_stream — no buffering of binary data
+    // in the JS heap. Concurrency is the bottleneck for completion time, not
+    // memory, so we run a healthy parallel batch.
+    const CONCURRENCY = 15;
     const fileRefs = new Array(sources.length);
 
     async function uploadOne(src, idx) {
       const isImage = /\.(png|jpg|jpeg|gif|webp)$/i.test(src.originalname);
       try {
-        const buf = await src.getBuffer();
-        const result = await uploadBuffer(buf, {
+        const readable = await src.getStream();
+        const result = await uploadStream(readable, {
           folder: `vya-reports/${env}/${platform}/${version}`,
           resourceType: isImage ? 'image' : 'raw',
           publicId: src.originalname.replace(/\.[^.]+$/, '') + '-' + Date.now(),
@@ -321,6 +389,10 @@ router.post('/upload', (req, res, next) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
+    // Close any yauzl file handles we opened.
+    for (const zf of zipfilesToClose) {
+      try { zf.close(); } catch (_) {}
+    }
     // Clean up temp upload files written by multer disk storage. Best-effort —
     // ignore failures (file already gone, container restarted, etc.).
     for (const p of tmpFilesToCleanup) {

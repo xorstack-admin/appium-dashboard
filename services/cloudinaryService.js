@@ -22,8 +22,28 @@ async function uploadBuffer(buffer, options = {}) {
   });
 }
 
+// Pipe a Readable stream directly to Cloudinary. Avoids buffering the whole
+// file in heap, which matters for large screenshots being streamed out of a zip.
+async function uploadStream(readable, options = {}) {
+  return new Promise((resolve, reject) => {
+    const cloudStream = cloudinary.uploader.upload_stream(
+      {
+        folder: options.folder ? sanitizePublicId(options.folder) : 'vya-reports',
+        resource_type: options.resourceType || 'auto',
+        public_id: sanitizePublicId(options.publicId),
+      },
+      (err, result) => {
+        if (err) reject(err);
+        else resolve({ url: result.secure_url, publicId: result.public_id, size: result.bytes });
+      }
+    );
+    readable.on('error', reject);
+    readable.pipe(cloudStream);
+  });
+}
+
 async function deleteFile(publicId, resourceType = 'raw') {
   return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 }
 
-module.exports = { uploadBuffer, deleteFile };
+module.exports = { uploadBuffer, uploadStream, deleteFile };
