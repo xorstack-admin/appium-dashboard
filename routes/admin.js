@@ -433,12 +433,10 @@ router.delete('/reports/:id', async (req, res) => {
     const report = await Report.findById(req.params.id);
     if (!report) return res.status(404).json({ error: 'Report not found' });
 
-    // Delete Cloudinary files
-    for (const file of report.files || []) {
-      const resourceType = file.type === 'screenshot' ? 'image' : 'raw';
-      await deleteFile(file.publicId, resourceType).catch(() => {});
-    }
-
+    // Delete the Mongo doc FIRST so the UI sees the report gone instantly.
+    // Cloudinary cleanup is hundreds-to-thousands of API calls for large
+    // reports — too slow to do inside the request (Render's proxy times out
+    // at ~100s, leaving the doc undeleted and the UI looking broken).
     await Report.findByIdAndDelete(req.params.id);
 
     await ActivityLog.create({
@@ -450,6 +448,24 @@ router.delete('/reports/:id', async (req, res) => {
     if (io) io.emit('report-deleted', { id: report._id, env: report.env, platform: report.platform, version: report.version, businessVersion: report.businessVersion });
 
     res.json({ success: true });
+
+    // Fire-and-forget Cloudinary cleanup. Errors are logged but don't affect
+    // the user — the DB record is already gone, and orphaned Cloudinary files
+    // are a much smaller problem than a UI that won't delete.
+    const files = report.files || [];
+    setImmediate(async () => {
+      const CLEANUP_CONCURRENCY = 10;
+      for (let i = 0; i < files.length; i += CLEANUP_CONCURRENCY) {
+        const batch = files.slice(i, i + CLEANUP_CONCURRENCY);
+        await Promise.all(batch.map(file => {
+          if (!file.publicId) return Promise.resolve();
+          const resourceType = file.type === 'screenshot' ? 'image' : 'raw';
+          return deleteFile(file.publicId, resourceType).catch(err => {
+            console.error(`Cloudinary cleanup failed for ${file.publicId}:`, err.message);
+          });
+        }));
+      }
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
