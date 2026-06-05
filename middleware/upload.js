@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB per file — zips can be large with screenshots
+    fileSize: 1024 * 1024 * 1024, // 1GB per file — zips can be large with screenshots
     fieldSize: 10 * 1024 * 1024, // 10MB for text fields
   },
   fileFilter(req, file, cb) {
@@ -38,7 +38,7 @@ function uploadErrorHandler(err, req, res, next) {
   if (!err) return next();
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({ error: 'File too large. Maximum size is 500MB per file.' });
+      return res.status(413).json({ error: 'File too large. Maximum size is 1GB per file.' });
     }
     return res.status(400).json({ error: `Upload error: ${err.message}` });
   }

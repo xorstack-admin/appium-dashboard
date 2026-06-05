@@ -38,8 +38,8 @@ app.set('io', io);
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ limit: '500mb', extended: true }));
+app.use(express.json({ limit: '1gb' }));
+app.use(express.urlencoded({ limit: '1gb', extended: true }));
 app.use(express.static(PUBLIC));
 
 // Serve user-login and dashboard pages explicitly
